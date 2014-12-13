@@ -1,6 +1,6 @@
 FakeWeb.allow_net_connect = false
 
-module Anemone
+module Medusa
   AUTH = ['user', 'pass']
   SPEC_DOMAIN = "http://www.example.com/"
   AUTH_SPEC_DOMAIN = "http://#{AUTH.join(':')}@#{URI.parse(SPEC_DOMAIN).host}/"
@@ -16,7 +16,7 @@ module Anemone
       @hrefs = [options[:hrefs]].flatten if options.has_key?(:hrefs)
       @redirect = options[:redirect] if options.has_key?(:redirect)
       @auth = options[:auth] if options.has_key?(:auth)
-      @base = options[:base] if options.has_key?(:base)      
+      @base = options[:base] if options.has_key?(:base)
       @content_type = options[:content_type] || "text/html"
       @body = options[:body]
 
@@ -75,4 +75,4 @@ module Anemone
 end
 
 #default root
-Anemone::FakePage.new
+Medusa::FakePage.new

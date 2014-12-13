@@ -1,8 +1,8 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
-%w[pstore tokyo_cabinet sqlite3 mongodb redis].each { |file| require "anemone/storage/#{file}.rb" }
+%w[pstore tokyo_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
 
-module Anemone
+module Medusa
   describe PageStore do
 
     before(:all) do
@@ -19,7 +19,7 @@ module Anemone
         pages << FakePage.new('4')
 
         # crawl, then set depths to nil
-        page_store = Anemone.crawl(pages.first.url, @opts) do |a|
+        page_store = Medusa.crawl(pages.first.url, @opts) do |a|
           a.after_crawl do |ps|
             ps.each { |url, page| page.depth = nil; ps[url] = page }
           end
@@ -41,7 +41,7 @@ module Anemone
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Anemone.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, @opts).pages
 
         page_store.should respond_to(:uniq!)
 
@@ -57,7 +57,7 @@ module Anemone
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Anemone.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, @opts).pages
 
         page_store.should respond_to(:pages_linking_to)
 
@@ -74,7 +74,7 @@ module Anemone
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Anemone.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, @opts).pages
 
         page_store.should respond_to(:pages_linking_to)
 

@@ -1,5 +1,5 @@
 require 'rspec/core/rake_task'
-require 'rake/rdoctask'
+require 'rdoc/task'
 
 desc "Run all specs"
 RSpec::Core::RakeTask.new(:rspec) do |spec|
@@ -17,7 +17,7 @@ Rake::RDocTask.new(:rdoc) do |rdoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
 
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "anemone #{version}"
+  rdoc.title = "medusa #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end

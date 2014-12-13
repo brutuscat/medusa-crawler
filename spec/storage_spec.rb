@@ -1,29 +1,29 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
 
-%w[pstore tokyo_cabinet kyoto_cabinet sqlite3 mongodb redis].each { |file| require "anemone/storage/#{file}.rb" }
+%w[pstore tokyo_cabinet kyoto_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
 
-module Anemone
+module Medusa
   describe Storage do
 
     describe ".Hash" do
       it "returns a Hash adapter" do
-        Anemone::Storage.Hash.should be_an_instance_of(Hash)
+        Medusa::Storage.Hash.should be_an_instance_of(Hash)
       end
     end
 
     describe ".PStore" do
       it "returns a PStore adapter" do
         test_file = 'test.pstore'
-        Anemone::Storage.PStore(test_file).should be_an_instance_of(Anemone::Storage::PStore)
+        Medusa::Storage.PStore(test_file).should be_an_instance_of(Medusa::Storage::PStore)
       end
     end
 
     describe ".TokyoCabinet" do
       it "returns a TokyoCabinet adapter" do
         test_file = 'test.tch'
-        store = Anemone::Storage.TokyoCabinet(test_file)
-        store.should be_an_instance_of(Anemone::Storage::TokyoCabinet)
+        store = Medusa::Storage.TokyoCabinet(test_file)
+        store.should be_an_instance_of(Medusa::Storage::TokyoCabinet)
         store.close
       end
     end
@@ -32,16 +32,16 @@ module Anemone
       context "when the file is specified" do
         it "returns a KyotoCabinet adapter using that file" do
           test_file = 'test.kch'
-          store = Anemone::Storage.KyotoCabinet(test_file)
-          store.should be_an_instance_of(Anemone::Storage::KyotoCabinet)
+          store = Medusa::Storage.KyotoCabinet(test_file)
+          store.should be_an_instance_of(Medusa::Storage::KyotoCabinet)
           store.close
         end
       end
 
       context "when no file is specified" do
         it "returns a KyotoCabinet adapter using the default filename" do
-          store = Anemone::Storage.KyotoCabinet
-          store.should be_an_instance_of(Anemone::Storage::KyotoCabinet)
+          store = Medusa::Storage.KyotoCabinet
+          store.should be_an_instance_of(Medusa::Storage::KyotoCabinet)
           store.close
         end
       end
@@ -50,24 +50,24 @@ module Anemone
     describe ".SQLite3" do
       it "returns a SQLite3 adapter" do
         test_file = 'test.db'
-        store = Anemone::Storage.SQLite3(test_file)
-        store.should be_an_instance_of(Anemone::Storage::SQLite3)
+        store = Medusa::Storage.SQLite3(test_file)
+        store.should be_an_instance_of(Medusa::Storage::SQLite3)
         store.close
       end
     end
 
     describe ".MongoDB" do
       it "returns a MongoDB adapter" do
-        store = Anemone::Storage.MongoDB
-        store.should be_an_instance_of(Anemone::Storage::MongoDB)
+        store = Medusa::Storage.MongoDB
+        store.should be_an_instance_of(Medusa::Storage::MongoDB)
         store.close
       end
     end
 
     describe ".MongoDB" do
       it "returns a Redis adapter" do
-        store = Anemone::Storage.Redis
-        store.should be_an_instance_of(Anemone::Storage::Redis)
+        store = Medusa::Storage.Redis
+        store.should be_an_instance_of(Medusa::Storage::Redis)
         store.close
       end
     end
@@ -84,7 +84,7 @@ module Anemone
           @store.should respond_to(:[])
           @store.should respond_to(:[]=)
 
-          @store[@url] = @page 
+          @store[@url] = @page
           @store[@url].url.should == URI(@url)
         end
 
@@ -112,7 +112,7 @@ module Anemone
           pages = urls.map { |url| Page.new(URI(url)) }
           urls.zip(pages).each { |arr| @store[arr[0]] = arr[1] }
 
-          (@store.keys - urls).should == [] 
+          (@store.keys - urls).should == []
         end
 
         it "should implement each" do
@@ -124,7 +124,7 @@ module Anemone
 
           result = {}
           @store.each { |k, v| result[k] = v }
-          (result.keys - urls).should == [] 
+          (result.keys - urls).should == []
           (result.values.map { |page| page.url.to_s } - urls).should == []
         end
 
@@ -141,7 +141,7 @@ module Anemone
 
         it "should correctly deserialize nil redirect_to when loading" do
           @page.redirect_to.should be_nil
-          @store[@url] = @page 
+          @store[@url] = @page
           @store[@url].redirect_to.should be_nil
         end
       end
@@ -152,7 +152,7 @@ module Anemone
         before(:each) do
           @test_file = 'test.pstore'
           File.delete @test_file rescue nil
-          @store =  Anemone::Storage.PStore(@test_file)
+          @store =  Medusa::Storage.PStore(@test_file)
         end
 
         after(:all) do
@@ -166,7 +166,7 @@ module Anemone
         before(:each) do
           @test_file = 'test.tch'
           File.delete @test_file rescue nil
-          @store =  Anemone::Storage.TokyoCabinet(@test_file)
+          @store =  Medusa::Storage.TokyoCabinet(@test_file)
         end
 
         after(:each) do
@@ -178,7 +178,7 @@ module Anemone
         end
 
         it "should raise an error if supplied with a file extension other than .tch" do
-          lambda { Anemone::Storage.TokyoCabinet('test.tmp') }.should raise_error(RuntimeError)
+          lambda { Medusa::Storage.TokyoCabinet('test.tmp') }.should raise_error(RuntimeError)
         end
       end
 
@@ -188,7 +188,7 @@ module Anemone
         before(:each) do
           @test_file = 'test.kch'
           File.delete @test_file rescue nil
-          @store =  Anemone::Storage.KyotoCabinet(@test_file)
+          @store =  Medusa::Storage.KyotoCabinet(@test_file)
         end
 
         after(:each) do
@@ -200,7 +200,7 @@ module Anemone
         end
 
         it "should raise an error if supplied with a file extension other than .kch" do
-          lambda { Anemone::Storage.KyotoCabinet('test.tmp') }.should raise_error(RuntimeError)
+          lambda { Medusa::Storage.KyotoCabinet('test.tmp') }.should raise_error(RuntimeError)
         end
       end
 
@@ -210,7 +210,7 @@ module Anemone
         before(:each) do
           @test_file = 'test.db'
           File.delete @test_file rescue nil
-          @store =  Anemone::Storage.SQLite3(@test_file)
+          @store =  Medusa::Storage.SQLite3(@test_file)
         end
 
         after(:each) do

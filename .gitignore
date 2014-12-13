@@ -6,3 +6,4 @@ test.tch
 rdoc
 *.bundle
 vendor/
+.ruby-version

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-module Anemone
+module Medusa
   describe HTTP do
 
     describe "fetch_page" do
@@ -10,7 +10,7 @@ module Anemone
 
       it "should still return a Page if an exception occurs during the HTTP connection" do
         HTTP.stub!(:get_response).and_raise(StandardError)
-        http = Anemone::HTTP.new
+        http = Medusa::HTTP.new
         http.fetch_page(SPEC_DOMAIN).should be_an_instance_of(Page)
       end
 

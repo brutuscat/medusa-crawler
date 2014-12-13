@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require 'medusa/cli'
+
+Medusa::CLI::run

@@ -1,7 +1,7 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
 
-module Anemone
+module Medusa
   describe CookieStore do
 
     it "should start out empty if no cookies are specified" do
