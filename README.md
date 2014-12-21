@@ -22,6 +22,18 @@ write your own specialized spider tasks quickly and easily.
 
 See the scripts under the <tt>lib/Medusa/cli</tt> directory for examples of several useful Medusa tasks.
 
+## TODO
+
+- [ ] Simplify storage module using [Moneta](https://github.com/minad/moneta), [see #1](https://github.com/brutuscat/medusa/issues/1)
+- [ ] Add multiverse of ruby versions and runtimes in test suite
+- [ ] Solve memory issues with a persistent Queue
+- [ ] Improve docs & examples
+- [ ] Allow to control the crawler, eg: "stop", "resume"
+- [ ] Improve logging facilities to collect stats, catch errors & failures
+- [ ] Add the concept of "bots" or drivers to interact with pages (eg: capybara)
+
+**Do you have an idea? [Open an issue so we can discuss it](https://github.com/brutuscat/medusa/issues/new)**
+
 ## Requirements
 
  - nokogiri
