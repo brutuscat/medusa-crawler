@@ -64,7 +64,7 @@ module Medusa
       end
     end
 
-    describe ".MongoDB" do
+    describe ".Redis" do
       it "returns a Redis adapter" do
         store = Medusa::Storage.Redis
         store.should be_an_instance_of(Medusa::Storage::Redis)

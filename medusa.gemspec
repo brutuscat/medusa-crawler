@@ -3,7 +3,6 @@ spec = Gem::Specification.new do |s|
   s.version = "0.0.1"
   s.authors = ["Chris Kite", "Mauro Asprea"]
   s.homepage = "https://github.com/brutuscat/medusa"
-  s.rubyforge_project = "medusa"
   s.platform = Gem::Platform::RUBY
   s.summary = "Medusa web-spider framework"
   s.executables = %w[medusa]
