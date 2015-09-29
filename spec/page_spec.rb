@@ -132,6 +132,16 @@ module Medusa
         page.links.should have(1).link
         page.links.first.to_s.should == SPEC_DOMAIN
       end
+
+      it 'should not return rails ujs links with data-method attribute' do
+        body = '<a data-method="delete" href="/delete_me">Something</a>' \
+               '<a data-method="patch" href="/patch_me">Something</a>' \
+               '<a href="/get_me">Something</a>'
+        page = @http.fetch_page(FakePage.new('', body: body).url)
+        page.links.should have(1).link
+        page.links[0].should be_a(URI)
+        page.links[0].to_s == 'http://www.example.com/get_me'
+      end
     end
 
     it "should detect, store and expose the base url for the page head" do
