@@ -60,6 +60,7 @@ module Medusa
       return @links if !doc
 
       doc.search("//a[@href]").each do |a|
+        next if a['data-method'] && a['data-method'] != 'get'
         u = a['href']
         next if u.nil? or u.empty?
         abs = to_absolute(u) rescue next
