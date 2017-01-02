@@ -8,7 +8,7 @@ module Medusa
         @adap = adapter
 
         # verify adapter conforms to this class's methods
-        methods.each do |method|
+        public_methods(false).each do |method|
           if !@adap.respond_to?(method.to_sym)
             raise "Storage adapter must support method #{method}"
           end
