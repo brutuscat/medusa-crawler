@@ -1,7 +1,7 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
 
-%w[pstore tokyo_cabinet kyoto_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
+%w[pstore tokyo_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
 
 module Medusa
   describe Storage do
@@ -25,25 +25,6 @@ module Medusa
         store = Medusa::Storage.TokyoCabinet(test_file)
         store.should be_an_instance_of(Medusa::Storage::TokyoCabinet)
         store.close
-      end
-    end
-
-    describe ".KyotoCabinet" do
-      context "when the file is specified" do
-        it "returns a KyotoCabinet adapter using that file" do
-          test_file = 'test.kch'
-          store = Medusa::Storage.KyotoCabinet(test_file)
-          store.should be_an_instance_of(Medusa::Storage::KyotoCabinet)
-          store.close
-        end
-      end
-
-      context "when no file is specified" do
-        it "returns a KyotoCabinet adapter using the default filename" do
-          store = Medusa::Storage.KyotoCabinet
-          store.should be_an_instance_of(Medusa::Storage::KyotoCabinet)
-          store.close
-        end
       end
     end
 
@@ -179,28 +160,6 @@ module Medusa
 
         it "should raise an error if supplied with a file extension other than .tch" do
           lambda { Medusa::Storage.TokyoCabinet('test.tmp') }.should raise_error(RuntimeError)
-        end
-      end
-
-      describe KyotoCabinet do
-        it_should_behave_like "storage engine"
-
-        before(:each) do
-          @test_file = 'test.kch'
-          File.delete @test_file rescue nil
-          @store =  Medusa::Storage.KyotoCabinet(@test_file)
-        end
-
-        after(:each) do
-          @store.close
-        end
-
-        after(:all) do
-          File.delete @test_file rescue nil
-        end
-
-        it "should raise an error if supplied with a file extension other than .kch" do
-          lambda { Medusa::Storage.KyotoCabinet('test.tmp') }.should raise_error(RuntimeError)
         end
       end
 

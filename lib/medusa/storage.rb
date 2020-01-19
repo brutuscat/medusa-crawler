@@ -18,11 +18,6 @@ module Medusa
       self::TokyoCabinet.new(file)
     end
 
-    def self.KyotoCabinet(file = 'medusa.kch')
-      require 'medusa/storage/kyoto_cabinet'
-      self::KyotoCabinet.new(file)
-    end
-
     def self.MongoDB(mongo_db = nil, collection_name = 'pages')
       require 'medusa/storage/mongodb'
       mongo_db ||= Mongo::Connection.new.db('medusa')
