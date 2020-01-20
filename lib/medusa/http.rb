@@ -1,4 +1,4 @@
-require 'open-uri'
+require 'rubygems'
 require 'medusa/page'
 require 'medusa/cookie_store'
 
@@ -161,7 +161,11 @@ module Medusa
         start = Time.now()
 
         begin
-          resource = URI.open(url, opts)
+          if Gem::Requirement.new('< 2.5').satisfied_by?(Gem::Version.new(RUBY_VERSION))
+            resource = open(url, opts)
+          else
+            resource = URI.open(url, opts)
+          end
         rescue OpenURI::HTTPRedirect => e_redirect
           resource = e_redirect.io
           redirect_to = e_redirect.uri
