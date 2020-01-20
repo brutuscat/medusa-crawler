@@ -1,3 +1,4 @@
+require 'open-uri'
 require 'medusa/page'
 require 'medusa/cookie_store'
 
@@ -160,7 +161,7 @@ module Medusa
         start = Time.now()
 
         begin
-          resource = open(url, opts)
+          resource = URI.open(url, opts)
         rescue OpenURI::HTTPRedirect => e_redirect
           resource = e_redirect.io
           redirect_to = e_redirect.uri

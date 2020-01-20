@@ -15,6 +15,7 @@ jobs:
         options: --entrypoint redis-server
 
     strategy:
+      fail-fast: false
       matrix:
         ruby: [2.4, 2.5, 2.6, 2.7]
     steps:
