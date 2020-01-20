@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-16.04
 
     services:
       redis:
@@ -14,22 +14,25 @@ jobs:
         - 6379:6379
         options: --entrypoint redis-server
 
+    strategy:
+      matrix:
+        ruby: [2.4, 2.5, 2.6, 2.7]
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Ruby 2.4
-      uses: actions/setup-ruby@v1
+    - name: Setup Ruby ${{ matrix.ruby }}
+      uses: eregon/use-ruby-action@v1
       with:
-        ruby-version: 2.4.x
+        ruby-version: ${{ matrix.ruby }}
 
     - uses: actions/cache@v1
       with:
         path: vendor/bundle
-        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        key: ${{ runner.os }}-ruby-version-${{ matrix.ruby }}-gems-${{ hashFiles('**/Gemfile.lock') }}
         restore-keys: |
-          ${{ runner.os }}-gems-
+          ${{ runner.os }}-ruby-version-${{ matrix.ruby }}-gems-
 
-    - name: Bundle install
+    - name: Install dependencies
       run: |
         gem install bundler
         bundle config path vendor/bundle
