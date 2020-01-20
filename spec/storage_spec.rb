@@ -1,7 +1,7 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
 
-%w[pstore tokyo_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
+require 'medusa/storage/redis.rb'
 
 module Medusa
   describe Storage do
@@ -9,39 +9,6 @@ module Medusa
     describe ".Hash" do
       it "returns a Hash adapter" do
         Medusa::Storage.Hash.should be_an_instance_of(Hash)
-      end
-    end
-
-    describe ".PStore" do
-      it "returns a PStore adapter" do
-        test_file = 'test.pstore'
-        Medusa::Storage.PStore(test_file).should be_an_instance_of(Medusa::Storage::PStore)
-      end
-    end
-
-    describe ".TokyoCabinet" do
-      it "returns a TokyoCabinet adapter" do
-        test_file = 'test.tch'
-        store = Medusa::Storage.TokyoCabinet(test_file)
-        store.should be_an_instance_of(Medusa::Storage::TokyoCabinet)
-        store.close
-      end
-    end
-
-    describe ".SQLite3" do
-      it "returns a SQLite3 adapter" do
-        test_file = 'test.db'
-        store = Medusa::Storage.SQLite3(test_file)
-        store.should be_an_instance_of(Medusa::Storage::SQLite3)
-        store.close
-      end
-    end
-
-    describe ".MongoDB" do
-      it "returns a MongoDB adapter" do
-        store = Medusa::Storage.MongoDB
-        store.should be_an_instance_of(Medusa::Storage::MongoDB)
-        store.close
       end
     end
 
@@ -124,73 +91,6 @@ module Medusa
           @page.redirect_to.should be_nil
           @store[@url] = @page
           @store[@url].redirect_to.should be_nil
-        end
-      end
-
-      describe PStore do
-        it_should_behave_like "storage engine"
-
-        before(:each) do
-          @test_file = 'test.pstore'
-          File.delete @test_file rescue nil
-          @store =  Medusa::Storage.PStore(@test_file)
-        end
-
-        after(:all) do
-          File.delete @test_file rescue nil
-        end
-      end
-
-      describe TokyoCabinet do
-        it_should_behave_like "storage engine"
-
-        before(:each) do
-          @test_file = 'test.tch'
-          File.delete @test_file rescue nil
-          @store =  Medusa::Storage.TokyoCabinet(@test_file)
-        end
-
-        after(:each) do
-          @store.close
-        end
-
-        after(:all) do
-          File.delete @test_file rescue nil
-        end
-
-        it "should raise an error if supplied with a file extension other than .tch" do
-          lambda { Medusa::Storage.TokyoCabinet('test.tmp') }.should raise_error(RuntimeError)
-        end
-      end
-
-      describe SQLite3 do
-        it_should_behave_like "storage engine"
-
-        before(:each) do
-          @test_file = 'test.db'
-          File.delete @test_file rescue nil
-          @store =  Medusa::Storage.SQLite3(@test_file)
-        end
-
-        after(:each) do
-          @store.close
-        end
-
-        after(:all) do
-          File.delete @test_file rescue nil
-        end
-
-      end
-
-      describe Storage::MongoDB do
-        it_should_behave_like "storage engine"
-
-        before(:each) do
-          @store = Storage.MongoDB
-        end
-
-        after(:each) do
-          @store.close
         end
       end
 

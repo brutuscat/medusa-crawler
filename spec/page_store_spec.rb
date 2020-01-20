@@ -1,6 +1,6 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
-%w[pstore tokyo_cabinet sqlite3 mongodb redis].each { |file| require "medusa/storage/#{file}.rb" }
+require 'medusa/storage/redis.rb'
 
 module Medusa
   describe PageStore do
@@ -90,68 +90,6 @@ module Medusa
 
       before(:all) do
         @opts = {}
-      end
-    end
-
-    describe Storage::PStore do
-      it_should_behave_like "page storage"
-
-      before(:each) do
-        @test_file = 'test.pstore'
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => Storage.PStore(@test_file)}
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
-
-    describe Storage::TokyoCabinet do
-      it_should_behave_like "page storage"
-
-      before(:each) do
-        @test_file = 'test.tch'
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => @store = Storage.TokyoCabinet(@test_file)}
-      end
-
-      after(:each) do
-        @store.close
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
-
-    describe Storage::SQLite3 do
-      it_should_behave_like "page storage"
-
-      before(:each) do
-        @test_file = 'test.db'
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => @store = Storage.SQLite3(@test_file)}
-      end
-
-      after(:each) do
-        @store.close
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
-
-    describe Storage::MongoDB do
-      it_should_behave_like "page storage"
-
-      before(:each) do
-        @opts = {:storage => @store = Storage.MongoDB}
-      end
-
-      after(:each) do
-        @store.close
       end
     end
 

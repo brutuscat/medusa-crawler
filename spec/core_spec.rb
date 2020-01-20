@@ -1,6 +1,5 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
-%w[pstore tokyo_cabinet sqlite3].each { |file| require "medusa/storage/#{file}.rb" }
 
 module Medusa
   describe Core do
@@ -239,65 +238,6 @@ module Medusa
 
       before(:all) do
         @opts = {}
-      end
-    end
-
-    describe Storage::PStore do
-      it_should_behave_like "crawl"
-
-      before(:all) do
-        @test_file = 'test.pstore'
-      end
-
-      before(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => Storage.PStore(@test_file)}
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
-
-    describe Storage::TokyoCabinet do
-      it_should_behave_like "crawl"
-
-      before(:all) do
-        @test_file = 'test.tch'
-      end
-
-      before(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => @store = Storage.TokyoCabinet(@test_file)}
-      end
-
-      after(:each) do
-        @store.close
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
-
-    describe Storage::SQLite3 do
-      it_should_behave_like "crawl"
-
-      before(:all) do
-        @test_file = 'test.db'
-      end
-
-      before(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => @store = Storage.SQLite3(@test_file)}
-      end
-
-      after(:each) do
-        @store.close
-      end
-
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
       end
     end
 
