@@ -16,7 +16,7 @@ module Medusa
         pages << FakePage.new('2')
         pages << FakePage.new('3')
 
-        Medusa.crawl(pages[0].url, @opts).should have(4).pages
+        expect(Medusa.crawl(pages[0].url, @opts).pages.size).to eq(4)
       end
 
       it "should not follow links that leave the original domain" do
@@ -26,8 +26,8 @@ module Medusa
 
         core = Medusa.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
-        core.pages.keys.should_not include('http://www.other.com/')
+        expect(core.pages.size).to eq(2)
+        expect(core.pages.keys).not_to include('http://www.other.com/')
       end
 
       it "should not follow redirects that leave the original domain" do
@@ -37,8 +37,8 @@ module Medusa
 
         core = Medusa.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
-        core.pages.keys.should_not include('http://www.other.com/')
+        expect(core.pages.size).to eq(2)
+        expect(core.pages.keys).not_to include('http://www.other.com/')
       end
 
       it "should follow http redirects" do
@@ -47,7 +47,7 @@ module Medusa
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        Medusa.crawl(pages[0].url, @opts).should have(3).pages
+        expect(Medusa.crawl(pages[0].url, @opts).pages.size).to eq(3)
       end
 
       it "should follow with HTTP basic authentication" do
@@ -58,7 +58,7 @@ module Medusa
         pages << FakePage.new('3', :auth => true)
 
         opts = @opts.merge({:http_basic_authentication => AUTH})
-        Medusa.crawl(pages.first.url, opts).should have(4).pages
+        expect(Medusa.crawl(pages.first.url, opts).pages.size).to eq(4)
       end
 
       it "should accept multiple starting URLs" do
@@ -68,7 +68,7 @@ module Medusa
         pages << FakePage.new('2', :links => ['3'])
         pages << FakePage.new('3')
 
-        Medusa.crawl([pages[0].url, pages[2].url], @opts).should have(4).pages
+        expect(Medusa.crawl([pages[0].url, pages[2].url], @opts).pages.size).to eq(4)
       end
 
       it "should include the query string when following links" do
@@ -79,8 +79,8 @@ module Medusa
 
         core = Medusa.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
-        core.pages.keys.should_not include(pages[2].url)
+        expect(core.pages.size).to eq(2)
+        expect(core.pages.keys).not_to include(pages[2].url)
       end
 
       it "should be able to skip links with query strings" do
@@ -93,7 +93,7 @@ module Medusa
           a.skip_query_strings = true
         end
 
-        core.should have(2).pages
+        expect(core.pages.size).to eq(2)
       end
 
       it "should be able to skip links based on a RegEx" do
@@ -107,9 +107,9 @@ module Medusa
           a.skip_links_like /1/, /3/
         end
 
-        core.should have(2).pages
-        core.pages.keys.should_not include(pages[1].url)
-        core.pages.keys.should_not include(pages[3].url)
+        expect(core.pages.size).to eq(2)
+        expect(core.pages.keys).not_to include(pages[1].url)
+        expect(core.pages.keys).not_to include(pages[3].url)
       end
 
       it "should be able to call a block on every page" do
@@ -123,7 +123,7 @@ module Medusa
           a.on_every_page { count += 1 }
         end
 
-        count.should == 3
+        expect(count).to eq(3)
       end
 
       it "should not discard page bodies by default" do
@@ -145,8 +145,8 @@ module Medusa
           a.focus_crawl {|p| p.links.reject{|l| l.to_s =~ /1/}}
         end
 
-        core.should have(2).pages
-        core.pages.keys.should_not include(pages[1].url)
+        expect(core.pages.size).to eq(2)
+        expect(core.pages.keys).not_to include(pages[1].url)
       end
 
       it "should optionally delay between page requests" do
@@ -160,7 +160,7 @@ module Medusa
         Medusa.crawl(pages[0].url, @opts.merge({:delay => delay}))
         finish = Time.now
 
-        (finish - start).should satisfy {|t| t > delay * 2}
+        expect(finish - start).to satisfy {|t| t > delay * 2}
       end
 
       it "should optionally obey the robots exclusion protocol" do
@@ -174,8 +174,8 @@ module Medusa
         core = Medusa.crawl(pages[0].url, @opts.merge({:obey_robots_txt => true}))
         urls = core.pages.keys
 
-        urls.should include(pages[0].url)
-        urls.should_not include(pages[1].url)
+        expect(core.pages.keys).to include(pages[0].url)
+        expect(core.pages.keys).not_to include(pages[1].url)
       end
 
       it "should be able to set cookies to send with HTTP requests" do
@@ -183,17 +183,17 @@ module Medusa
         core = Medusa.crawl(FakePage.new('0').url) do |medusa|
           medusa.cookies = cookies
         end
-        core.opts[:cookies].should == cookies
+        expect(core.opts[:cookies]).to eq(cookies)
       end
 
       it "should freeze the options once the crawl begins" do
         core = Medusa.crawl(FakePage.new('0').url) do |medusa|
           medusa.threads = 4
           medusa.on_every_page do
-            lambda {medusa.threads = 2}.should raise_error
+            expect{ medusa.threads = 2 }.to raise_error(RuntimeError)
           end
         end
-        core.opts[:threads].should == 4
+        expect(core.opts[:threads]).to eq(4)
       end
 
       describe "many pages" do
@@ -213,13 +213,12 @@ module Medusa
 
           @pages.each_with_index do |page, i|
             page = core.pages[page.url]
-            page.should be
-            page.depth.should == i
+            expect(page.depth).to eq(i)
 
             if previous_page
-              page.referer.should == previous_page.url
+              expect(page.referer).to eq(previous_page.url)
             else
-              page.referer.should be_nil
+              expect(page.referer).to be_nil
             end
             previous_page = page
           end
@@ -227,7 +226,7 @@ module Medusa
 
         it "should optionally limit the depth of the crawl" do
           core = Medusa.crawl(@pages[0].url, @opts.merge({:depth_limit => 3}))
-          core.should have(4).pages
+          expect(core.pages.size).to eq(4)
         end
       end
 
@@ -250,13 +249,13 @@ module Medusa
                                           :obey_robots_txt => true,
                                           :depth_limit => 3)
 
-        core.opts[:verbose].should == false
-        core.opts[:threads].should == 2
-        core.opts[:discard_page_bodies].should == true
-        core.opts[:delay].should == 0
-        core.opts[:user_agent].should == 'test'
-        core.opts[:obey_robots_txt].should == true
-        core.opts[:depth_limit].should == 3
+        expect(core.opts[:verbose]).to eq(false)
+        expect(core.opts[:threads]).to eq(2)
+        expect(core.opts[:discard_page_bodies]).to eq(true)
+        expect(core.opts[:delay]).to eq(0)
+        expect(core.opts[:user_agent]).to eq('test')
+        expect(core.opts[:obey_robots_txt]).to eq(true)
+        expect(core.opts[:depth_limit]).to eq(3)
       end
 
       it "should accept options via setter methods in the crawl block" do
@@ -269,17 +268,17 @@ module Medusa
           a.depth_limit = 3
         end
 
-        core.opts[:verbose].should == false
-        core.opts[:threads].should == 2
-        core.opts[:discard_page_bodies].should == true
-        core.opts[:delay].should == 0
-        core.opts[:user_agent].should == 'test'
-        core.opts[:obey_robots_txt].should == true
-        core.opts[:depth_limit].should == 3
+        expect(core.opts[:verbose]).to eq(false)
+        expect(core.opts[:threads]).to eq(2)
+        expect(core.opts[:discard_page_bodies]).to eq(true)
+        expect(core.opts[:delay]).to eq(0)
+        expect(core.opts[:user_agent]).to eq('test')
+        expect(core.opts[:obey_robots_txt]).to eq(true)
+        expect(core.opts[:depth_limit]).to eq(3)
       end
 
       it "should use 1 thread if a delay is requested" do
-        Medusa.crawl(SPEC_DOMAIN, :delay => 0.01, :threads => 2).opts[:threads].should == 1
+        expect(Medusa.crawl(SPEC_DOMAIN, :delay => 0.01, :threads => 2).opts[:threads]).to be(1)
       end
     end
 

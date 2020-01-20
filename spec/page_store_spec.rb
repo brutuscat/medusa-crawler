@@ -25,14 +25,14 @@ module Medusa
           end
         end.pages
 
-        page_store.should respond_to(:shortest_paths!)
+        expect(page_store).to respond_to(:shortest_paths!)
 
         page_store.shortest_paths!(pages[0].url)
-        page_store[pages[0].url].depth.should == 0
-        page_store[pages[1].url].depth.should == 1
-        page_store[pages[2].url].depth.should == 1
-        page_store[pages[3].url].depth.should == 1
-        page_store[pages[4].url].depth.should == 2
+        expect(page_store[pages[0].url].depth).to eq(0)
+        expect(page_store[pages[1].url].depth).to eq(1)
+        expect(page_store[pages[2].url].depth).to eq(1)
+        expect(page_store[pages[3].url].depth).to eq(1)
+        expect(page_store[pages[4].url].depth).to eq(2)
       end
 
       it "should be able to remove all redirects in-place" do
@@ -43,12 +43,12 @@ module Medusa
 
         page_store = Medusa.crawl(pages[0].url, @opts).pages
 
-        page_store.should respond_to(:uniq!)
+        expect(page_store).to respond_to(:uniq!)
 
         page_store.uniq!
-        page_store.has_key?(pages[1].url).should == false
-        page_store.has_key?(pages[0].url).should == true
-        page_store.has_key?(pages[2].url).should == true
+        expect(page_store.has_key?(pages[1].url)).to eq(false)
+        expect(page_store.has_key?(pages[0].url)).to eq(true)
+        expect(page_store.has_key?(pages[2].url)).to eq(true)
       end
 
       it "should be able to find pages linking to a url" do
@@ -59,13 +59,13 @@ module Medusa
 
         page_store = Medusa.crawl(pages[0].url, @opts).pages
 
-        page_store.should respond_to(:pages_linking_to)
+        expect(page_store).to respond_to(:pages_linking_to)
 
-        page_store.pages_linking_to(pages[2].url).size.should == 0
+        expect(page_store.pages_linking_to(pages[2].url).size).to eq(0)
         links_to_1 = page_store.pages_linking_to(pages[1].url)
-        links_to_1.size.should == 1
-        links_to_1.first.should be_an_instance_of(Page)
-        links_to_1.first.url.to_s.should == pages[0].url
+        expect(links_to_1.size).to eq(1)
+        expect(links_to_1.first).to be_an_instance_of(Page)
+        expect(links_to_1.first.url.to_s).to eq(pages[0].url)
       end
 
       it "should be able to find urls linking to a url" do
@@ -76,12 +76,12 @@ module Medusa
 
         page_store = Medusa.crawl(pages[0].url, @opts).pages
 
-        page_store.should respond_to(:pages_linking_to)
+        expect(page_store).to respond_to(:pages_linking_to)
 
-        page_store.urls_linking_to(pages[2].url).size.should == 0
+        expect(page_store.urls_linking_to(pages[2].url).size).to eq(0)
         links_to_1 = page_store.urls_linking_to(pages[1].url)
-        links_to_1.size.should == 1
-        links_to_1.first.to_s.should == pages[0].url
+        expect(links_to_1.size).to eq(1)
+        expect(links_to_1.first.to_s).to eq(pages[0].url)
       end
     end
 

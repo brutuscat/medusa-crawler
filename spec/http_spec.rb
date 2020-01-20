@@ -9,9 +9,9 @@ module Medusa
       end
 
       it "should still return a Page if an exception occurs during the HTTP connection" do
-        HTTP.stub!(:get_response).and_raise(StandardError)
+        allow_any_instance_of(Medusa::HTTP).to receive(:get_response).and_raise(StandardError, 'HARDCODED FAILURE!')
         http = Medusa::HTTP.new
-        http.fetch_page(SPEC_DOMAIN).should be_an_instance_of(Page)
+        expect(http.fetch_page(SPEC_DOMAIN)).to be_an_instance_of(Page)
       end
 
     end
