@@ -7,7 +7,6 @@ spec = Gem::Specification.new do |s|
   s.summary = "Medusa web-spider framework"
   s.executables = %w[medusa]
   s.require_path = "lib"
-  s.has_rdoc = true
   s.rdoc_options << '-m' << 'README.md' << '-t' << 'Medusa'
   s.extra_rdoc_files = ["README.md"]
   s.add_dependency("nokogiri", ">= 1.3.0")

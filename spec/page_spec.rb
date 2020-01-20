@@ -19,9 +19,8 @@ module Medusa
     end
 
     it "should store and expose the response body of the HTTP request" do
-      body = 'test'
-      page = @http.fetch_page(FakePage.new('body_test', {:body => body}).url)
-      expect(page.body).to eq(body)
+      page = @http.fetch_page(FakePage.new('body_test', {:body => 'test'}).url)
+      expect(page.body).to eq('test')
     end
 
     it "should record any error that occurs during fetch_page" do
