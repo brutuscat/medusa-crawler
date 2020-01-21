@@ -4,13 +4,11 @@ require 'medusa/tentacle'
 require 'medusa/page'
 require 'medusa/exceptions'
 require 'medusa/page_store'
+require 'medusa/version'
 require 'medusa/storage'
 require 'medusa/storage/base'
 
 module Medusa
-
-  VERSION = '0.0.1';
-
   #
   # Convenience method to start a crawl
   #

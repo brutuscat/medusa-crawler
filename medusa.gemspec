@@ -1,7 +1,7 @@
 spec = Gem::Specification.new do |s|
   s.name = "medusa"
-  s.version = "0.0.2"
-  s.authors = ["Chris Kite", "Mauro Asprea"]
+  s.version = "1.0.0-alpha-1"
+  s.authors = ["Mauro Asprea", "Chris Kite"]
   s.homepage = "https://github.com/brutuscat/medusa"
   s.platform = Gem::Platform::RUBY
   s.summary = "Medusa web-spider framework"
