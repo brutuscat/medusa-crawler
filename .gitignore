@@ -5,4 +5,5 @@ test.tch
 rdoc
 *.bundle
 vendor/
+Gemfile.lock
 .ruby-version
