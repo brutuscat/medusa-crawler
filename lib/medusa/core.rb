@@ -42,6 +42,8 @@ module Medusa
       :redirect_limit => 5,
       # storage engine defaults to Hash in +process_options+ if none specified
       :storage => nil,
+      # cleanups of the storage on every startup of the crawler
+      :clear_on_startup => true,
       # Hash of cookie name => value to send with HTTP requests
       :cookies => nil,
       # accept cookies from the server and send them back?
@@ -196,6 +198,7 @@ module Medusa
       @opts = DEFAULT_OPTS.merge @opts
       @opts[:threads] = 1 if @opts[:delay] > 0
       storage = Medusa::Storage::Base.new(@opts[:storage] || Medusa::Storage.Hash)
+      storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
 

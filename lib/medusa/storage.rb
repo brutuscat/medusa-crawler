@@ -8,6 +8,11 @@ module Medusa
       hash
     end
 
+    def self.Moneta(*args)
+      require 'medusa/storage/moneta'
+      self::Moneta.new(*args)
+    end
+
     def self.Redis(opts = {})
       require 'medusa/storage/redis'
       self::Redis.new(opts)

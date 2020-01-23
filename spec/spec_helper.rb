@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'bundler/setup'
+require 'pry'
 require 'fakeweb'
 require File.dirname(__FILE__) + '/fakeweb_helper'
 

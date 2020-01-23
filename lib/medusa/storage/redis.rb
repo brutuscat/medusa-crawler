@@ -9,7 +9,6 @@ module Medusa
       def initialize(opts = {})
         @redis = ::Redis.new(opts)
         @key_prefix = opts[:key_prefix] || 'medusa'
-        keys.each { |key| delete(key) }
       end
 
       def [](key)
@@ -33,6 +32,10 @@ module Medusa
         page = self[key]
         @redis.del(rkey)
         page
+      end
+
+      def clear
+        keys.each { |key| delete(key) }
       end
 
       def each
