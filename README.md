@@ -1,4 +1,4 @@
-# Medusa
+# Medusa ![Ruby](https://github.com/brutuscat/medusa/workflows/Ruby/badge.svg?event=push)
 
 Medusa is a web spider framework that can spider a domain and collect useful
 information about the pages it visits. It is versatile, allowing you to
