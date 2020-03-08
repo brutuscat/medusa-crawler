@@ -1,5 +1,3 @@
-require 'spec_helper'
-require 'support/shared_storage_spec.rb'
 require 'medusa/storage/redis.rb'
 
 module Medusa

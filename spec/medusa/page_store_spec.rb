@@ -1,6 +1,5 @@
-$:.unshift(File.dirname(__FILE__))
-require 'spec_helper'
-require 'medusa/storage/redis.rb'
+require 'medusa/page_store'
+require 'medusa/storage/redis'
 
 module Medusa
   describe PageStore do

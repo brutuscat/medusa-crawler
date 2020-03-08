@@ -1,6 +1,4 @@
-
 require 'spec_helper'
-require 'support/shared_storage_spec.rb'
 require 'medusa/storage/moneta.rb'
 
 module Medusa

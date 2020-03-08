@@ -1,5 +1,4 @@
-$:.unshift(File.dirname(__FILE__))
-require 'spec_helper'
+require 'medusa/cookie_store'
 
 module Medusa
   describe CookieStore do

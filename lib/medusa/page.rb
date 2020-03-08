@@ -41,7 +41,7 @@ module Medusa
 
       @code = params[:code]
       @headers = params[:headers] || {}
-      @headers['content-type'] ||= ['']
+      @headers['content-type'] ||= ''
       @aliases = Array(params[:aka]).compact
       @referer = params[:referer]
       @depth = params[:depth] || 0

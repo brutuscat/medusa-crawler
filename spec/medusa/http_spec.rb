@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'medusa/http'
 
 module Medusa
   describe HTTP do
