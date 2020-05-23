@@ -2,8 +2,6 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'moneta', github: 'brutuscat/moneta', ref: '7e19f840b27823fd9de1881ee3eba230e3914a18'
-
 group :test, :development do
   gem 'rake', '>=0.9.2'
   gem 'rdoc', '>=3.12'
