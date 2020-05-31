@@ -12,10 +12,5 @@ module Medusa
       require 'medusa/storage/moneta'
       self::Moneta.new(*args)
     end
-
-    def self.Redis(opts = {})
-      require 'medusa/storage/redis'
-      self::Redis.new(opts)
-    end
   end
 end

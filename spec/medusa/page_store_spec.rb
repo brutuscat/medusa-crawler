@@ -2,7 +2,6 @@
 
 require 'fakeweb_helper'
 require 'medusa/page_store'
-require 'medusa/storage/redis'
 
 module Medusa
   RSpec.describe PageStore do

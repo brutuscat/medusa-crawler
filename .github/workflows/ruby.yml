@@ -7,13 +7,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    services:
-      redis:
-        image: redis
-        ports:
-        - 6379:6379
-        options: --entrypoint redis-server
-
     strategy:
       fail-fast: false
       matrix:
@@ -41,8 +34,5 @@ jobs:
         bundle install --jobs 4 --retry 3
 
     - name: Test with RSpec
-      env:
-        REDIS_HOST: redis
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
       run: |
         bundle exec rspec spec

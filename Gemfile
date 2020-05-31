@@ -7,7 +7,6 @@ group :test, :development do
   gem 'rdoc', '>=3.12'
   gem 'rspec', '>=3.9'
   gem 'fakeweb', github: 'chrisk/fakeweb', ref: '2b08c1f'
-  gem 'redis', '>=2.2.0'
   gem 'bson_ext', '>=1.3.1'
   gem 'pry-stack_explorer'
   gem 'pry-nav'

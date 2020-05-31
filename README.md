@@ -15,7 +15,7 @@ write your own specialized spider tasks quickly and easily.
  - Records response time for each page
  - CLI program can list all pages in a domain, calculate page depths, and more
  - Obey robots.txt
- - In-memory or persistent storage of pages during crawl Redis
+ - In-memory or persistent storage of pages during crawl using Moneta adapters
  - Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
 
 ## Examples
@@ -44,6 +44,3 @@ See the scripts under the <tt>lib/Medusa/cli</tt> directory for examples of seve
 To test and develop this gem, additional requirements are:
  - rspec
  - fakeweb
- - redis
-
-You will need to have [Redis](http://redis.io/) installed on your system and running.

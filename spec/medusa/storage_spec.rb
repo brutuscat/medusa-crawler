@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'support/storage_engine.rb'
-require 'medusa/storage/redis.rb'
 
 module Medusa
   RSpec.describe Storage do
