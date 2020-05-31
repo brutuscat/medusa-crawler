@@ -10,7 +10,7 @@ module Medusa
 
       alias has_key? key?
 
-      def initialize(name, options = {threadsafe: true, prefix: 'moneta'})
+      def initialize(name, options = {threadsafe: true, prefix: 'medusa'})
         @moneta = ::Moneta.new(name, options)
       end
 
@@ -22,7 +22,10 @@ module Medusa
       end
 
       def size
-        @moneta.each_key.size
+        current_size = @moneta.each_key.size
+
+        return @moneta.each_key.reduce(0) { |size, k|  size + 1 } if current_size.nil?
+        return current_size
       end
 
       def keys
@@ -30,7 +33,7 @@ module Medusa
       end
 
       def merge!(hash)
-        @moneta.merge!(hash)
+        @moneta.merge!(hash) unless hash.empty?
         self
       end
     end

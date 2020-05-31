@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'medusa/page'
 
-shared_examples_for "storage engine" do
+RSpec.shared_examples_for "storage engine" do
 
   before(:each) do
     @url = SPEC_DOMAIN

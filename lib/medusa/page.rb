@@ -39,6 +39,12 @@ module Medusa
       @url = url
       @data = OpenStruct.new
 
+      @links = nil
+      @visited = false
+      @body = nil
+      @doc = nil
+      @base = nil
+
       @code = params[:code]
       @headers = params[:headers] || {}
       @headers['content-type'] ||= ''

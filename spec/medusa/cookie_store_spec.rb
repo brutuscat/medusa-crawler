@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 require 'medusa/cookie_store'
 
 module Medusa
-  describe CookieStore do
+  RSpec.describe CookieStore do
 
     it "should start out empty if no cookies are specified" do
       expect(CookieStore.new.empty?).to be true

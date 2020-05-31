@@ -1,5 +1,5 @@
 
-describe Medusa do
+RSpec.describe Medusa do
 
   it "should have a version" do
     expect(Medusa.const_defined?('VERSION')).to be true

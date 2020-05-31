@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'medusa/http'
+require 'fakeweb_helper'
 
 module Medusa
-  describe HTTP do
+  RSpec.describe HTTP do
 
     describe "fetch_page" do
       before(:each) do

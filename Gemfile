@@ -9,7 +9,8 @@ group :test, :development do
   gem 'fakeweb', github: 'chrisk/fakeweb', ref: '2b08c1f'
   gem 'redis', '>=2.2.0'
   gem 'bson_ext', '>=1.3.1'
-  gem 'pry'
+  gem 'pry-stack_explorer'
+  gem 'pry-nav'
   # A command line tool to easily handle events on file system modifications, wo we can continuously run specs.
   gem 'guard'
   # Guard plugin for rspec

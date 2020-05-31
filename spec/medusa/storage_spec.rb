@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
+require 'support/storage_engine.rb'
 require 'medusa/storage/redis.rb'
 
 module Medusa
-  describe Storage do
+  RSpec.describe Storage do
     describe ".Hash" do
       let(:store) { Medusa::Storage.Hash }
 

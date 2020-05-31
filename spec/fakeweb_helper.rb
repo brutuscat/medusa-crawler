@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+require 'fakeweb'
+
 FakeWeb.allow_net_connect = false
 
 module Medusa
@@ -12,6 +16,12 @@ module Medusa
 
     def initialize(name = '', options = {})
       @name = name
+      @links = []
+      @hrefs = []
+      @redirect = nil
+      @auth = false
+      @base = ''
+
       @links = [options[:links]].flatten if options.has_key?(:links)
       @hrefs = [options[:hrefs]].flatten if options.has_key?(:hrefs)
       @redirect = options[:redirect] if options.has_key?(:redirect)
