@@ -10,10 +10,4 @@ group :test, :development do
   gem 'bson_ext', '>=1.3.1'
   gem 'pry-stack_explorer'
   gem 'pry-nav'
-  # A command line tool to easily handle events on file system modifications, wo we can continuously run specs.
-  gem 'guard'
-  # Guard plugin for rspec
-  gem 'guard-rspec', require: false
-  # Guard notification plugin
-  gem 'terminal-notifier-guard'
 end
