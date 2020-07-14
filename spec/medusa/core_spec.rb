@@ -144,18 +144,16 @@ module Medusa
         expect(core.pages.keys).not_to include(pages[1].url)
       end
 
-      it "should optionally delay between page requests", :skip do
+      it "should optionally delay between page requests" do
         delay = 0.25
+        expect_any_instance_of(Tentacle).to receive(:sleep).with(delay).twice
 
         pages = []
         pages << FakePage.new('0', :links => '1')
         pages << FakePage.new('1')
 
-        start = Time.now
-        Medusa.crawl(pages[0].url, opts.merge({:delay => delay}))
-        finish = Time.now
-
-        expect(finish - start).to satisfy {|t| t > delay * 2}
+        core = Medusa.crawl(pages[0].url, opts.merge({:delay => delay}))
+        expect(core.pages.size).to eq(2)
       end
 
       it "should optionally obey the robots exclusion protocol" do
@@ -270,7 +268,8 @@ module Medusa
       end
 
       it "should use 1 thread if a delay is requested" do
-        expect(Medusa.crawl(SPEC_DOMAIN, :delay => 0.01, :threads => 2).opts[:threads]).to be(1)
+        allow_any_instance_of(Tentacle).to receive(:sleep)
+        expect(Medusa.crawl(SPEC_DOMAIN, :delay => 1, :threads => 2).opts[:threads]).to be(1)
       end
     end
 

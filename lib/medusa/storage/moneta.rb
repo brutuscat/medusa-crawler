@@ -10,8 +10,9 @@ module Medusa
 
       alias has_key? key?
 
-      def initialize(name, options = {threadsafe: true, prefix: 'medusa'})
-        @moneta = ::Moneta.new(name, options)
+      def initialize(name, options = {})
+        default_options = { threadsafe: true, prefix: 'medusa' }
+        @moneta = ::Moneta.new(name, default_options.merge(options))
       end
 
       def each
