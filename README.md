@@ -1,8 +1,6 @@
-# Medusa ![Ruby](https://github.com/brutuscat/medusa/workflows/Ruby/badge.svg?event=push)
+# The Medusa Crawler ![Ruby](https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push)
 
-Medusa is a web spider framework that can spider a domain and collect useful
-information about the pages it visits. It is versatile, allowing you to
-write your own specialized spider tasks quickly and easily.
+Medusa is a framework to crawl and collect useful information about the pages it visits. It is versatile, allowing you to write your own specialized tasks quickly and easily.
 
 
 ## Features
@@ -24,23 +22,24 @@ See the scripts under the <tt>lib/Medusa/cli</tt> directory for examples of seve
 
 ## TODO
 
-- [ ] Simplify storage module using [Moneta](https://github.com/minad/moneta), [see #1](https://github.com/brutuscat/medusa/issues/1)
-- [ ] Add multiverse of ruby versions and runtimes in test suite
+- [x] Simplify storage module using [Moneta](https://github.com/minad/moneta)
+- [x] Add multiverse of ruby versions and runtimes in test suite
 - [ ] Solve memory issues with a persistent Queue
 - [ ] Improve docs & examples
 - [ ] Allow to control the crawler, eg: "stop", "resume"
 - [ ] Improve logging facilities to collect stats, catch errors & failures
 - [ ] Add the concept of "bots" or drivers to interact with pages (eg: capybara)
 
-**Do you have an idea? [Open an issue so we can discuss it](https://github.com/brutuscat/medusa/issues/new)**
+**Do you have an idea? [Open an issue so we can discuss it](https://github.com/brutuscat/medusa-crawler/issues/new)**
 
 ## Requirements
 
+ - moneta
  - nokogiri
- - robots
+ - robotex
 
 ## Development
 
 To test and develop this gem, additional requirements are:
  - rspec
- - fakeweb
+ - webmock
