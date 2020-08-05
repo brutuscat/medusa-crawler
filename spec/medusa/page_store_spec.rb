@@ -7,7 +7,7 @@ module Medusa
   RSpec.describe PageStore do
 
     before(:all) do
-      FakeWeb.clean_registry
+      WebMock.reset!
     end
 
     RSpec.shared_examples_for "page storage" do

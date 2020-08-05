@@ -8,7 +8,7 @@ module Medusa
 
     describe "fetch_page" do
       before(:each) do
-        FakeWeb.clean_registry
+        WebMock.reset!
       end
 
       it "should still return a Page if an exception occurs during the HTTP connection" do

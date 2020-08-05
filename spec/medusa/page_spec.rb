@@ -5,7 +5,7 @@ module Medusa
   RSpec.describe Page do
 
     before(:each) do
-      FakeWeb.clean_registry
+      WebMock.reset!
       @http = Medusa::HTTP.new
       @page = @http.fetch_page(FakePage.new('home', :links => '1').url)
     end

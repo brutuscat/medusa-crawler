@@ -5,7 +5,7 @@ module Medusa
   RSpec.describe Core do
 
     before(:each) do
-      FakeWeb.clean_registry
+      WebMock.reset!
     end
 
     RSpec.shared_examples_for "crawl" do
@@ -160,11 +160,8 @@ module Medusa
         pages = []
         pages << FakePage.new('0', :links => '1')
         pages << FakePage.new('1')
-        pages << FakePage.new('robots.txt',
-                              :body => "User-agent: *\nDisallow: /1",
-                              :content_type => 'text/plain')
-
-        core = Medusa.crawl(pages[0].url, opts.merge({:obey_robots_txt => true}))
+        pages << FakePage.new('robots.txt', body: "User-agent: *\nDisallow: /1", content_type: 'text/plain')
+        core = Medusa.crawl(pages[0].url, opts.merge(obey_robots_txt: true))
 
         expect(core.pages.keys).to include(pages[0].url)
         expect(core.pages.keys).not_to include(pages[1].url)
@@ -231,6 +228,8 @@ module Medusa
     end
 
     describe "options" do
+      let!(:robots_page) { FakePage.new('robots.txt', body: "User-agent: *\nDisallow: /1", content_type: 'text/plain') }
+
       it "should accept options for the crawl" do
         core = Medusa.crawl(SPEC_DOMAIN, :verbose => false,
                                           :threads => 2,
