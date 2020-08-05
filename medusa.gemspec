@@ -2,9 +2,9 @@ spec = Gem::Specification.new do |s|
   s.name = "medusa"
   s.version = "1.0.0-alpha-1"
   s.authors = ["Mauro Asprea", "Chris Kite"]
-  s.homepage = "https://github.com/brutuscat/medusa"
+  s.homepage = "https://github.com/brutuscat/medusa-crawler"
   s.platform = Gem::Platform::RUBY
-  s.summary = "Medusa web-spider framework"
+  s.summary = "The Medusa Crawler"
   s.executables = %w[medusa]
   s.require_path = "lib"
   s.rdoc_options << '-m' << 'README.md' << '-t' << 'Medusa'
