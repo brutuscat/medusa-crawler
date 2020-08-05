@@ -132,6 +132,14 @@ module Medusa
         expect(page.links.first.to_s).to eq(SPEC_DOMAIN)
       end
 
+      it 'removes anchors containing non-alphanumeric characters' do
+        links = '<a href="#Top of the page!">Top</a><a href="/to-section#Another section!">Middle</a><a href="#Bottom of the page!">Bottom</a>'
+        page = @http.fetch_page(FakePage.new('', body: links).url)
+        expect(page.links.size).to eq(2)
+        expect(page.links[0].to_s).to eq(SPEC_DOMAIN)
+        expect(page.links[1].to_s).to eq("#{SPEC_DOMAIN}to-section")
+      end
+
       it 'should not return rails ujs links with data-method attribute' do
         body = '<a data-method="delete" href="/delete_me">Something</a>' \
                '<a data-method="patch" href="/patch_me">Something</a>' \

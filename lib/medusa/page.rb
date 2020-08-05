@@ -163,7 +163,7 @@ module Medusa
       return nil if link.nil?
 
       # remove anchor
-      link = link.to_s.gsub(/#[a-zA-Z0-9_-]*$/,'')
+      link = link.to_s.gsub(/#.*$/,'')
       if Gem::Requirement.new('< 2.5').satisfied_by?(Gem::Version.new(RUBY_VERSION))
         link = URI.encode(URI.decode(link))
       end
