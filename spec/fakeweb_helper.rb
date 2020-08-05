@@ -1,4 +1,8 @@
-FakeWeb.allow_net_connect = false
+# frozen_string_literal: true
+
+require 'webmock/rspec'
+
+WebMock.disable_net_connect!
 
 module Medusa
   AUTH = ['user', 'pass']
@@ -12,6 +16,12 @@ module Medusa
 
     def initialize(name = '', options = {})
       @name = name
+      @links = []
+      @hrefs = []
+      @redirect = nil
+      @auth = false
+      @base = ''
+
       @links = [options[:links]].flatten if options.has_key?(:links)
       @hrefs = [options[:hrefs]].flatten if options.has_key?(:hrefs)
       @redirect = options[:redirect] if options.has_key?(:redirect)
@@ -46,29 +56,26 @@ module Medusa
     end
 
     def add_to_fakeweb
-      options = {:body => @body, :content_type => @content_type, :status => [200, "OK"]}
+      options = {body: @body, status: [200, 'OK'], headers: {'Content-Type' => @content_type}}
 
       if @redirect
-        options[:status] = [301, "Permanently Moved"]
+        options[:status] = [301, 'Moved Permanently']
 
         # only prepend SPEC_DOMAIN if a relative url (without an http scheme) was specified
         redirect_url = (@redirect =~ /http/) ? @redirect : SPEC_DOMAIN + @redirect
-        options[:location] = redirect_url
+        options[:headers]['Location'] = redirect_url
 
         # register the page this one redirects to
-        FakeWeb.register_uri(:get, redirect_url, {:body => '',
-                                                  :content_type => @content_type,
-                                                  :status => [200, "OK"]})
+        WebMock.stub_request(:get, redirect_url).to_return(body: '', status: [200, 'OK'], headers: {'Content-Type' => @content_type})
       end
 
       if @auth
-        unautorized_options = {
-          :body => "Unauthorized", :status => ["401", "Unauthorized"]
-        }
-        FakeWeb.register_uri(:get, SPEC_DOMAIN + @name, unautorized_options)
-        FakeWeb.register_uri(:get, AUTH_SPEC_DOMAIN + @name, options)
+        unautorized_options = {body: 'Unauthorized', status: [401, 'Unauthorized']}
+
+        WebMock.stub_request(:get, url).to_return(unautorized_options)
+        WebMock.stub_request(:get, url).with(basic_auth: AUTH).to_return(options)
       else
-        FakeWeb.register_uri(:get, SPEC_DOMAIN + @name, options)
+        WebMock.stub_request(:get, url).to_return(options)
       end
     end
   end

@@ -15,7 +15,7 @@ INFO
   exit(0)
 end
 
-Medusa.crawl(root) do |medusa|
+Medusa.crawl(root, read_timeout: 3, discard_page_bodies: true, obey_robots_txt: true) do |medusa|
   medusa.skip_links_like %r{^/c/$}, %r{^/stores/$}
 
   medusa.after_crawl do |pages|

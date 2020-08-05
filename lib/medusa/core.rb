@@ -42,6 +42,8 @@ module Medusa
       :redirect_limit => 5,
       # storage engine defaults to Hash in +process_options+ if none specified
       :storage => nil,
+      # cleanups of the storage on every startup of the crawler
+      :clear_on_startup => true,
       # Hash of cookie name => value to send with HTTP requests
       :cookies => nil,
       # accept cookies from the server and send them back?
@@ -54,7 +56,7 @@ module Medusa
       :proxy_port => false,
       # HTTP read timeout in seconds
       :read_timeout => nil
-    }
+    }.freeze
 
     # Create setter methods for all options to be called from the crawl block
     DEFAULT_OPTS.keys.each do |key|
@@ -77,6 +79,8 @@ module Medusa
       @skip_link_patterns = []
       @after_crawl_blocks = []
       @opts = opts
+      @focus_crawl_block = nil
+
 
       yield self if block_given?
     end
@@ -153,7 +157,7 @@ module Medusa
       page_queue = Queue.new
 
       @opts[:threads].times do
-        @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts).run }
+        @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts.dup).run }
       end
 
       @urls.each{ |url| link_queue.enq(url) }
@@ -195,7 +199,8 @@ module Medusa
     def process_options
       @opts = DEFAULT_OPTS.merge @opts
       @opts[:threads] = 1 if @opts[:delay] > 0
-      storage = Medusa::Storage::Base.new(@opts[:storage] || Medusa::Storage.Hash)
+      storage = Storage::Base.new(@opts[:storage] || Storage.Moneta(:Memory))
+      storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
 

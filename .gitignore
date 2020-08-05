@@ -7,3 +7,4 @@ rdoc
 vendor/
 Gemfile.lock
 .ruby-version
+spec/examples.txt

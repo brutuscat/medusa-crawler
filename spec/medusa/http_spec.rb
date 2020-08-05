@@ -1,11 +1,14 @@
-require 'spec_helper'
+# frozen_string_literal: true
+
+require 'medusa/http'
+require 'fakeweb_helper'
 
 module Medusa
-  describe HTTP do
+  RSpec.describe HTTP do
 
     describe "fetch_page" do
       before(:each) do
-        FakeWeb.clean_registry
+        WebMock.reset!
       end
 
       it "should still return a Page if an exception occurs during the HTTP connection" do

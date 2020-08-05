@@ -1,15 +1,16 @@
-$:.unshift(File.dirname(__FILE__))
-require 'spec_helper'
-require 'medusa/storage/redis.rb'
+# frozen_string_literal: true
+
+require 'fakeweb_helper'
+require 'medusa/page_store'
 
 module Medusa
-  describe PageStore do
+  RSpec.describe PageStore do
 
     before(:all) do
-      FakeWeb.clean_registry
+      WebMock.reset!
     end
 
-    shared_examples_for "page storage" do
+    RSpec.shared_examples_for "page storage" do
       it "should be able to compute single-source shortest paths in-place" do
         pages = []
         pages << FakePage.new('0', :links => ['1', '3'])
@@ -19,7 +20,7 @@ module Medusa
         pages << FakePage.new('4')
 
         # crawl, then set depths to nil
-        page_store = Medusa.crawl(pages.first.url, @opts) do |a|
+        page_store = Medusa.crawl(pages.first.url, opts) do |a|
           a.after_crawl do |ps|
             ps.each { |url, page| page.depth = nil; ps[url] = page }
           end
@@ -41,7 +42,7 @@ module Medusa
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Medusa.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, opts).pages
 
         expect(page_store).to respond_to(:uniq!)
 
@@ -57,7 +58,7 @@ module Medusa
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Medusa.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, opts).pages
 
         expect(page_store).to respond_to(:pages_linking_to)
 
@@ -74,7 +75,7 @@ module Medusa
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        page_store = Medusa.crawl(pages[0].url, @opts).pages
+        page_store = Medusa.crawl(pages[0].url, opts).pages
 
         expect(page_store).to respond_to(:pages_linking_to)
 
@@ -86,24 +87,8 @@ module Medusa
     end
 
     describe Hash do
+      let(:opts) { Hash.new }
       it_should_behave_like "page storage"
-
-      before(:all) do
-        @opts = {}
-      end
     end
-
-    describe Storage::Redis do
-      it_should_behave_like "page storage"
-
-      before(:each) do
-        @opts = {:storage => @store = Storage.Redis}
-      end
-
-      after(:each) do
-        @store.close
-      end
-    end
-
   end
 end

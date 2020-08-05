@@ -1,11 +1,11 @@
-$:.unshift(File.dirname(__FILE__))
-require 'spec_helper'
+require 'fakeweb_helper'
+require 'medusa/page'
 
 module Medusa
-  describe Page do
+  RSpec.describe Page do
 
     before(:each) do
-      FakeWeb.clean_registry
+      WebMock.reset!
       @http = Medusa::HTTP.new
       @page = @http.fetch_page(FakePage.new('home', :links => '1').url)
     end
