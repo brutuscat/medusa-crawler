@@ -133,10 +133,11 @@ module Medusa
       end
 
       it 'removes anchors containing non-alphanumeric characters' do
-        links = '<a href="#Top of the page!">Top</a><a href="#Bottom of the page!">Bottom</a>'
-        page = @http.fetch_page(FakePage.new('', :body => links).url)
-        page.links.should have(1).link
-        page.links.first.to_s.should == SPEC_DOMAIN
+        links = '<a href="#Top of the page!">Top</a><a href="/to-section#Another section!">Middle</a><a href="#Bottom of the page!">Bottom</a>'
+        page = @http.fetch_page(FakePage.new('', body: links).url)
+        expect(page.links.size).to eq(2)
+        expect(page.links[0].to_s).to eq(SPEC_DOMAIN)
+        expect(page.links[1].to_s).to eq("#{SPEC_DOMAIN}to-section")
       end
 
       it 'should not return rails ujs links with data-method attribute' do
