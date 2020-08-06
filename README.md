@@ -1,20 +1,19 @@
-# The Medusa Crawler ![Ruby](https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push)
+# Medusa: a ruby crawler framework ![Ruby](https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push)
 
 Medusa is a framework to crawl and collect useful information about the pages it visits. It is versatile, allowing you to write your own specialized tasks quickly and easily.
 
 
 ## Features
- - Multi-threaded design for high performance
- - Tracks 301 HTTP redirects
- - Built-in BFS algorithm for determining page depth
- - Allows exclusion of URLs based on regular expressions
- - Choose the links to follow on each page with focus_crawl()
- - HTTPS support
- - Records response time for each page
- - CLI program can list all pages in a domain, calculate page depths, and more
- - Obey robots.txt
- - In-memory or persistent storage of pages during crawl using Moneta adapters
- - Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
+
+- Choose the links to follow on each page with `focus_crawl()`
+- Multi-threaded design for high performance
+- Tracks 301 HTTP redirects
+- Allows exclusion of URLs based on regular expressions
+- HTTPS support
+- Records response time for each page
+- Obey robots.txt
+- In-memory or persistent storage of pages during crawl using [Moneta](https://github.com/moneta-rb/moneta) adapters
+- Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
 
 ## Examples
 
@@ -43,3 +42,7 @@ See the scripts under the <tt>lib/Medusa/cli</tt> directory for examples of seve
 To test and develop this gem, additional requirements are:
  - rspec
  - webmock
+
+## Disclaimer
+
+Medusa is a revamped version of the defunk anemone gem.
