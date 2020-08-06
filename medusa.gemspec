@@ -11,7 +11,7 @@ spec = Gem::Specification.new do |s|
     Medusa is a ruby framework to crawl and collect useful information about the pages it visits.
     It is versatile, allowing you to write your own specialized tasks quickly and easily.
 
-    #### Features
+    Features:
 
     - Choose the links to follow on each page with `focus_crawl()`
     - Multi-threaded design for high performance
