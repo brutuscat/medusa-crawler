@@ -5,6 +5,7 @@ test.tch
 rdoc
 *.bundle
 vendor/
+pkg/
 Gemfile.lock
 .ruby-version
 spec/examples.txt
