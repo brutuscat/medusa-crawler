@@ -298,7 +298,7 @@ module Medusa
     # its URL matches a skip_link pattern.
     #
     def skip_link?(link)
-      @skip_link_patterns.any? { |pattern| link.path =~ pattern }
+      @skip_link_patterns.any? { |pattern| link.to_s =~ pattern }
     end
 
   end

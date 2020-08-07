@@ -96,20 +96,24 @@ module Medusa
         expect(core.pages.size).to eq(2)
       end
 
-      it "should be able to skip links based on a RegEx" do
+      it 'skips links based on a RegEx' do
         pages = []
         pages << FakePage.new('0', :links => ['1', '2'])
         pages << FakePage.new('1')
-        pages << FakePage.new('2')
+        pages << FakePage.new('2', :links => ['4?skip-me=no', '4?example=1&skip-me=yes'])
         pages << FakePage.new('3')
+        pages << FakePage.new('4?skip-me=no')
+        pages << FakePage.new('4?example=1&skip-me=yes')
+
 
         core = Medusa.crawl(pages[0].url, opts) do |a|
-          a.skip_links_like(/1/, /3/)
+          a.skip_links_like(/1/, /3/, /skip-me=yes/)
         end
 
-        expect(core.pages.size).to eq(2)
+        expect(core.pages.size).to eq(3)
         expect(core.pages.keys).not_to include(pages[1].url)
         expect(core.pages.keys).not_to include(pages[3].url)
+        expect(core.pages.keys).not_to include(pages[5].url)
       end
 
       it "should be able to call a block on every page" do
