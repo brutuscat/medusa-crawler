@@ -6,22 +6,24 @@ spec = Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.summary = 'Medusa is a ruby crawler framework'
   s.description = <<~DESCRIPTION.strip
-    == Medusa: a ruby crawler framework
+    == Medusa: a ruby crawler framework {rdoc-image:https://badge.fury.io/rb/medusa-crawler.svg}[https://badge.fury.io/rb/medusa-crawler] rdoc-image:https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push
 
-    Medusa is a ruby framework to crawl and collect useful information about the pages it visits.
-    It is versatile, allowing you to write your own specialized tasks quickly and easily.
+    Medusa is a framework for the ruby language to crawl and collect useful information about the pages
+    it visits. It is versatile, allowing you to write your own specialized tasks quickly and easily.
 
-    Features:
+    === Features
 
-    - Choose the links to follow on each page with `focus_crawl()`
-    - Multi-threaded design for high performance
-    - Tracks 301 HTTP redirects
-    - Allows exclusion of URLs based on regular expressions
-    - HTTPS support
-    - Records response time for each page
-    - Obey robots.txt
-    - In-memory or persistent storage of pages during crawl using Moneta adapters.
-    - Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
+    * Choose the links to follow on each page with +focus_crawl+
+    * Multi-threaded design for high performance
+    * Tracks +301+ HTTP redirects
+    * Allows exclusion of URLs based on regular expressions
+    * HTTPS support
+    * Records response time for each page
+    * Obey _robots.txt_ directives (optional, but recommended)
+    * In-memory or persistent storage of pages during crawl, provided by Moneta[https://github.com/moneta-rb/moneta]
+    * Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
+
+    <b>Do you have an idea or a suggestion? {Open an issue and talk about it}[https://github.com/brutuscat/medusa-crawler/issues/new]</b>
   DESCRIPTION
 
   s.executables = %w[medusa]
@@ -38,6 +40,7 @@ spec = Gem::Specification.new do |s|
   s.metadata = {
     'bug_tracker_uri' => 'https://github.com/brutuscat/medusa-crawler/issues',
     'source_code_uri' => "https://github.com/brutuscat/medusa-crawler/tree/v#{s.version}",
+    'description_markup_format' => 'rdoc',
   }
 
   s.files = %w[
