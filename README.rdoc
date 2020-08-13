@@ -33,4 +33,4 @@ To test and develop this gem, additional requirements are:
 
 === Disclaimer
 
-Medusa is a revamped version of the defunk anemone gem.
+Medusa is a revamped version of the defunk _anemone_ gem.
