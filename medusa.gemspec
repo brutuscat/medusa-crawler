@@ -1,35 +1,21 @@
 spec = Gem::Specification.new do |s|
   s.name = 'medusa-crawler'
   s.version = '1.0.0.pre.1'
+  s.summary = 'Medusa is a ruby crawler framework'
   s.authors = ['Mauro Asprea', 'Chris Kite']
   s.homepage = 'https://github.com/brutuscat/medusa-crawler'
+  s.email = 'mauroasprea@gmail.com'
   s.platform = Gem::Platform::RUBY
-  s.summary = 'Medusa is a ruby crawler framework'
-  s.description = <<~DESCRIPTION.strip
-    == Medusa: a ruby crawler framework {rdoc-image:https://badge.fury.io/rb/medusa-crawler.svg}[https://badge.fury.io/rb/medusa-crawler] rdoc-image:https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push
+  s.required_ruby_version = '>= 2.3.0'
 
-    Medusa is a framework for the ruby language to crawl and collect useful information about the pages
-    it visits. It is versatile, allowing you to write your own specialized tasks quickly and easily.
+  # Make the description be the first block of the readme rdoc file
+  open('README.rdoc') do |readme|
+    s.description = readme.read.partition('---').first
+  end
 
-    === Features
-
-    * Choose the links to follow on each page with +focus_crawl+
-    * Multi-threaded design for high performance
-    * Tracks +301+ HTTP redirects
-    * Allows exclusion of URLs based on regular expressions
-    * HTTPS support
-    * Records response time for each page
-    * Obey _robots.txt_ directives (optional, but recommended)
-    * In-memory or persistent storage of pages during crawl, provided by Moneta[https://github.com/moneta-rb/moneta]
-    * Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
-
-    <b>Do you have an idea or a suggestion? {Open an issue and talk about it}[https://github.com/brutuscat/medusa-crawler/issues/new]</b>
-  DESCRIPTION
-
-  s.executables = %w[medusa]
   s.require_path = 'lib'
-  s.rdoc_options << '-m' << 'README.md' << '-t' << 'Medusa'
-  s.extra_rdoc_files = ['README.md']
+  s.rdoc_options << '-m' << 'README.rdoc' << '-t' << 'Medusa'
+  s.extra_rdoc_files = ['README.rdoc']
   s.add_runtime_dependency('moneta', '~> 1.3', '>= 1.3.0')
   s.add_runtime_dependency('nokogiri', '~> 1.3', '>= 1.3.0')
   s.add_runtime_dependency('robotex', '~> 1.0', '>= 1.0.0')
@@ -48,7 +34,7 @@ spec = Gem::Specification.new do |s|
     LICENSE.txt
     CHANGELOG.md
     CONTRIBUTORS.md
-    README.md
+    README.rdoc
     Rakefile
   ] + Dir['lib/**/*.rb']
 
