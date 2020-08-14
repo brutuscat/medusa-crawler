@@ -59,44 +59,6 @@ module Medusa
     end
 
     #
-    # Use a breadth-first search to calculate the single-source
-    # shortest paths from *root* to all pages in the PageStore
-    #
-    def shortest_paths!(root)
-      root = URI(root) if root.is_a?(String)
-      raise "Root node not found" if !has_key?(root)
-
-      q = Queue.new
-
-      q.enq root
-      root_page = self[root]
-      root_page.depth = 0
-      root_page.visited = true
-      self[root] = root_page
-      while !q.empty?
-        page = self[q.deq]
-        page.links.each do |u|
-          begin
-            link = self[u]
-            next if link.nil? || !link.fetched? || link.visited
-
-            q << u unless link.redirect?
-            link.visited = true
-            link.depth = page.depth + 1
-            self[u] = link
-
-            if link.redirect?
-              u = link.redirect_to
-              redo
-            end
-          end
-        end
-      end
-
-      self
-    end
-
-    #
     # Removes all Pages from storage where redirect? is true
     #
     def uniq!

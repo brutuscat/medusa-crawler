@@ -22,8 +22,6 @@ module Medusa
     attr_accessor :data
     # Integer response code of the page
     attr_accessor :code
-    # Boolean indicating whether or not this page has been visited in PageStore#shortest_paths!
-    attr_accessor :visited
     # Depth of this page from the root of the crawl. This is not necessarily the
     # shortest path; use PageStore#shortest_paths! to find that value.
     attr_accessor :depth
@@ -40,7 +38,6 @@ module Medusa
       @data = OpenStruct.new
 
       @links = nil
-      @visited = false
       @body = nil
       @doc = nil
       @base = nil

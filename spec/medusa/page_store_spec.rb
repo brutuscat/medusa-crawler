@@ -11,31 +11,6 @@ module Medusa
     end
 
     RSpec.shared_examples_for "page storage" do
-      it "should be able to compute single-source shortest paths in-place" do
-        pages = []
-        pages << FakePage.new('0', :links => ['1', '3'])
-        pages << FakePage.new('1', :redirect => '2')
-        pages << FakePage.new('2', :links => ['4'])
-        pages << FakePage.new('3')
-        pages << FakePage.new('4')
-
-        # crawl, then set depths to nil
-        page_store = Medusa.crawl(pages.first.url, opts) do |a|
-          a.after_crawl do |ps|
-            ps.each { |url, page| page.depth = nil; ps[url] = page }
-          end
-        end.pages
-
-        expect(page_store).to respond_to(:shortest_paths!)
-
-        page_store.shortest_paths!(pages[0].url)
-        expect(page_store[pages[0].url].depth).to eq(0)
-        expect(page_store[pages[1].url].depth).to eq(1)
-        expect(page_store[pages[2].url].depth).to eq(1)
-        expect(page_store[pages[3].url].depth).to eq(1)
-        expect(page_store[pages[4].url].depth).to eq(2)
-      end
-
       it "should be able to remove all redirects in-place" do
         pages = []
         pages << FakePage.new('0', :links => ['1'])
