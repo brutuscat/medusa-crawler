@@ -31,6 +31,14 @@ To test and develop this gem, additional requirements are:
 - rspec
 - webmock
 
-=== Disclaimer
+=== About
 
 Medusa is a revamped version of the defunk _anemone_ gem.
+
+=== License
+
+Copyright (c) 2009 Vertive, Inc.
+
+Copyright (c) 2020 Mauro Asprea
+
+Released under the {MIT License}[https://github.com/brutuscat/medusa-crawler/blob/master/LICENSE.txt]
