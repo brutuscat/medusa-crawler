@@ -1,3 +1,4 @@
+## Medusa adds Moneta as the storage backend (2014-12-13)
 
 ## Anemone forked into Medusa (2014-12-13)
 
@@ -13,8 +14,8 @@ Features:
 Changes:
 
  - Renamed Anemone to Medusa
- - Revamped the [README](https://github.com/brutuscat/medusa/blob/master/README.md) file
- - Revamped the [CHANGELOG](https://github.com/brutuscat/medusa/blob/master/CHANGELOG.md) file
- - Revamped the [CONTRIBUTORS](https://github.com/brutuscat/medusa/blob/master/CONTRIBUTORS.mdd) file
+ - Revamped the [README](https://github.com/brutuscat/medusa-crawler/blob/master/README.md) file
+ - Revamped the [CHANGELOG](https://github.com/brutuscat/medusa-crawler/blob/master/CHANGELOG.md) file
+ - Revamped the [CONTRIBUTORS](https://github.com/brutuscat/medusa-crawler/blob/master/CONTRIBUTORS.mdd) file
 
 > Refer to the [Anemone changelog](https://github.com/chriskite/anemone/blob/next/CHANGELOG.rdoc) for a travel in time.

@@ -1,6 +1,6 @@
 # Contributors
 
-Many thanks to the following folks who have contributed code to Medusa (a fork of Anemone).
+Many thanks to the following people who have contributed code to Medusa (a fork of Anemone).
 
 In no particular order:
 

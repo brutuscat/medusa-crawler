@@ -40,7 +40,7 @@ module Medusa
       :depth_limit => false,
       # number of times HTTP redirects will be followed
       :redirect_limit => 5,
-      # storage engine defaults to Hash in +process_options+ if none specified
+      # storage engine defaults to In-memory store in +process_options+ if none specified
       :storage => nil,
       # cleanups of the storage on every startup of the crawler
       :clear_on_startup => true,
