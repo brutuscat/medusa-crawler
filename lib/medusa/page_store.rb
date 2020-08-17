@@ -65,58 +65,5 @@ module Medusa
       each_value { |page| delete page.url if page.redirect? }
       self
     end
-
-    #
-    # If given a single URL (as a String or URI), returns an Array of Pages which link to that URL
-    # If given an Array of URLs, returns a Hash (URI => [Page, Page...]) of Pages linking to those URLs
-    #
-    def pages_linking_to(urls)
-      unless urls.is_a?(Array)
-        urls = [urls]
-        single = true
-      end
-
-      urls.map! do |url|
-        unless url.is_a?(URI)
-          URI(url) rescue nil
-        else
-          url
-        end
-      end
-      urls.compact
-
-      links = {}
-      urls.each { |url| links[url] = [] }
-      values.each do |page|
-        urls.each { |url| links[url] << page if page.links.include?(url) }
-      end
-
-      if single and !links.empty?
-        return links[urls.first]
-      else
-        return links
-      end
-    end
-
-    #
-    # If given a single URL (as a String or URI), returns an Array of URLs which link to that URL
-    # If given an Array of URLs, returns a Hash (URI => [URI, URI...]) of URLs linking to those URLs
-    #
-    def urls_linking_to(urls)
-      unless urls.is_a?(Array)
-        urls = [urls] unless urls.is_a?(Array)
-        single = true
-      end
-
-      links = pages_linking_to(urls)
-      links.each { |url, pages| links[url] = pages.map{|p| p.url} }
-
-      if single and !links.empty?
-        return links[urls.first]
-      else
-        return links
-      end
-    end
-
   end
 end

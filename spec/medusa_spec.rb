@@ -1,3 +1,4 @@
+require 'fakeweb_helper'
 
 RSpec.describe Medusa do
 
@@ -6,9 +7,9 @@ RSpec.describe Medusa do
   end
 
   it "should return a Medusa::Core from the crawl, which has a PageStore" do
+  	Medusa::FakePage.new
     result = Medusa.crawl(SPEC_DOMAIN)
     expect(result).to be_an_instance_of(Medusa::Core)
     expect(result.pages).to be_an_instance_of(Medusa::PageStore)
   end
-
 end

@@ -29,9 +29,9 @@ module Medusa
     # including redirects
     #
     def fetch_pages(url, referer = nil, depth = nil)
+      pages = []
       begin
         url = URI(url) unless url.is_a?(URI)
-        pages = []
         get(url, referer) do |response, headers, code, location, redirect_to, response_time|
           pages << Page.new(location, :body => response,
                                       :headers => headers,
@@ -43,13 +43,8 @@ module Medusa
         end
 
         return pages
-      rescue Exception => e
-        if verbose?
-          puts e.inspect
-          puts e.backtrace
-        end
-        pages ||= []
-        return pages << Page.new(url, :error => e)
+      rescue StandardError => e
+        return pages << Page.new(url, error: e)
       end
     end
 
@@ -180,16 +175,11 @@ module Medusa
 
       rescue Timeout::Error, EOFError, Errno::ECONNREFUSED, Errno::ETIMEDOUT, Errno::ECONNRESET => e
         retries += 1
-        puts "[medusa] Retrying ##{retries} on url #{url} because of: #{e.inspect}" if verbose?
         sleep(3 ^ retries)
         retry unless retries > RETRY_LIMIT
       ensure
-        resource.close if !resource.nil? && !resource.closed?
+        resource&.close unless resource&.closed?
       end
-    end
-
-    def verbose?
-      @opts[:verbose]
     end
 
     #

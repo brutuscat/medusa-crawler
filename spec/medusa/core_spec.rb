@@ -232,17 +232,18 @@ module Medusa
     end
 
     describe "options" do
-      let!(:robots_page) { FakePage.new('robots.txt', body: "User-agent: *\nDisallow: /1", content_type: 'text/plain') }
+      before(:each) do
+        FakePage.new
+        FakePage.new('robots.txt', body: "User-agent: *\nDisallow: /1", content_type: 'text/plain')
+      end
 
       it "should accept options for the crawl" do
-        core = Medusa.crawl(SPEC_DOMAIN, :verbose => false,
-                                          :threads => 2,
+        core = Medusa.crawl(SPEC_DOMAIN, :threads => 2,
                                           :discard_page_bodies => true,
                                           :user_agent => 'test',
                                           :obey_robots_txt => true,
                                           :depth_limit => 3)
 
-        expect(core.opts[:verbose]).to eq(false)
         expect(core.opts[:threads]).to eq(2)
         expect(core.opts[:discard_page_bodies]).to eq(true)
         expect(core.opts[:delay]).to eq(0)
@@ -253,7 +254,6 @@ module Medusa
 
       it "should accept options via setter methods in the crawl block" do
         core = Medusa.crawl(SPEC_DOMAIN) do |a|
-          a.verbose = false
           a.threads = 2
           a.discard_page_bodies = true
           a.user_agent = 'test'
@@ -261,7 +261,6 @@ module Medusa
           a.depth_limit = 3
         end
 
-        expect(core.opts[:verbose]).to eq(false)
         expect(core.opts[:threads]).to eq(2)
         expect(core.opts[:discard_page_bodies]).to eq(true)
         expect(core.opts[:delay]).to eq(0)

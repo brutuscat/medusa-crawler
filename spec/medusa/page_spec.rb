@@ -14,6 +14,7 @@ module Medusa
       expect(@page).to respond_to(:fetched?)
       expect(@page.fetched?).to eq(true)
 
+      FakePage.new('fail', exception: RuntimeError.new('Fail!'))
       fail_page = @http.fetch_page(SPEC_DOMAIN + 'fail')
       expect(fail_page.fetched?).to eq(false)
     end
@@ -27,6 +28,7 @@ module Medusa
       expect(@page).to respond_to(:error)
       expect(@page.error).to be_nil
 
+      FakePage.new('fail', exception: RuntimeError.new('Fail!'))
       fail_page = @http.fetch_page(SPEC_DOMAIN + 'fail')
       expect(fail_page.error).to_not be_nil
     end

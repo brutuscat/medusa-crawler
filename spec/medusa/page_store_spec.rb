@@ -26,39 +26,6 @@ module Medusa
         expect(page_store.has_key?(pages[0].url)).to eq(true)
         expect(page_store.has_key?(pages[2].url)).to eq(true)
       end
-
-      it "should be able to find pages linking to a url" do
-        pages = []
-        pages << FakePage.new('0', :links => ['1'])
-        pages << FakePage.new('1', :redirect => '2')
-        pages << FakePage.new('2')
-
-        page_store = Medusa.crawl(pages[0].url, opts).pages
-
-        expect(page_store).to respond_to(:pages_linking_to)
-
-        expect(page_store.pages_linking_to(pages[2].url).size).to eq(0)
-        links_to_1 = page_store.pages_linking_to(pages[1].url)
-        expect(links_to_1.size).to eq(1)
-        expect(links_to_1.first).to be_an_instance_of(Page)
-        expect(links_to_1.first.url.to_s).to eq(pages[0].url)
-      end
-
-      it "should be able to find urls linking to a url" do
-        pages = []
-        pages << FakePage.new('0', :links => ['1'])
-        pages << FakePage.new('1', :redirect => '2')
-        pages << FakePage.new('2')
-
-        page_store = Medusa.crawl(pages[0].url, opts).pages
-
-        expect(page_store).to respond_to(:pages_linking_to)
-
-        expect(page_store.urls_linking_to(pages[2].url).size).to eq(0)
-        links_to_1 = page_store.urls_linking_to(pages[1].url)
-        expect(links_to_1.size).to eq(1)
-        expect(links_to_1.first.to_s).to eq(pages[0].url)
-      end
     end
 
     describe Hash do

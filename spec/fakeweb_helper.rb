@@ -29,6 +29,8 @@ module Medusa
       @base = options[:base] if options.has_key?(:base)
       @content_type = options[:content_type] || "text/html"
       @body = options[:body]
+      @status = options[:status] || [200, 'OK']
+      @exception = options[:exception]
 
       create_body unless @body
       add_to_fakeweb
@@ -56,7 +58,7 @@ module Medusa
     end
 
     def add_to_fakeweb
-      options = {body: @body, status: [200, 'OK'], headers: {'Content-Type' => @content_type}}
+      options = {body: @body, status: @status, headers: {'Content-Type' => @content_type}}
 
       if @redirect
         options[:status] = [301, 'Moved Permanently']
@@ -66,7 +68,7 @@ module Medusa
         options[:headers]['Location'] = redirect_url
 
         # register the page this one redirects to
-        WebMock.stub_request(:get, redirect_url).to_return(body: '', status: [200, 'OK'], headers: {'Content-Type' => @content_type})
+        WebMock.stub_request(:get, redirect_url).to_return(body: '', status: @status, headers: {'Content-Type' => @content_type})
       end
 
       if @auth
@@ -75,11 +77,14 @@ module Medusa
         WebMock.stub_request(:get, url).to_return(unautorized_options)
         WebMock.stub_request(:get, url).with(basic_auth: AUTH).to_return(options)
       else
-        WebMock.stub_request(:get, url).to_return(options)
+        WebMock.stub_request(:get, url).tap do |req|
+          if @exception
+            req.to_raise(@exception)
+          else
+            req.to_return(options)
+          end
+        end
       end
     end
   end
 end
-
-#default root
-Medusa::FakePage.new

@@ -26,8 +26,6 @@ module Medusa
     DEFAULT_OPTS = {
       # run 4 Tentacle threads to fetch pages
       :threads => 4,
-      # disable verbose output
-      :verbose => false,
       # don't throw away the page response body after scanning it for links
       :discard_page_bodies => false,
       # identify self as Medusa/VERSION
@@ -148,6 +146,7 @@ module Medusa
     # Perform the crawl
     #
     def run
+
       process_options
 
       @urls.delete_if { |url| !visit_link?(url) }
@@ -165,7 +164,6 @@ module Medusa
       loop do
         page = page_queue.deq
         @pages.touch_key page.url
-        puts "#{page.url} Queue: #{link_queue.size}" if @opts[:verbose]
         do_page_blocks page
         page.discard_doc! if @opts[:discard_page_bodies]
 
