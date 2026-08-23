@@ -19,8 +19,15 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency('moneta', '~> 1.3', '>= 1.3.0')
   s.add_runtime_dependency('nokogiri', '~> 1.3', '>= 1.3.0')
   s.add_runtime_dependency('robotex', '~> 1.0', '>= 1.0.0')
-  s.cert_chain  = ['certs/brutuscat.pem']
-  s.signing_key = File.expand_path('~/.ssh/gem-private_key.pem') if $0 =~ /gem\z/
+
+  # Trusted publishing authenticates releases with OIDC. Keep manual signing
+  # available only when the maintainer's legacy private key is present.
+  legacy_signing_key = File.expand_path('~/.ssh/gem-private_key.pem')
+  if File.file?(legacy_signing_key)
+    s.cert_chain = ['certs/brutuscat.pem']
+    s.signing_key = legacy_signing_key
+  end
+
   s.licenses    = %w[MIT]
 
   s.metadata = {

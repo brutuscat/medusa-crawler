@@ -1,0 +1,31 @@
+name: Publish gem
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
+          bundler-cache: true
+
+      - name: Verify tag matches gem version
+        run: ruby -e 'spec = Gem::Specification.load(%q[medusa.gemspec]); abort %q[Unable to load medusa.gemspec] unless spec; tag_version = ENV.fetch(%q[GITHUB_REF_NAME]).delete_prefix(%q[v]); gem_version = spec.version.to_s; abort %Q[Tag #{tag_version} does not match gem version #{gem_version}] unless tag_version == gem_version'
+
+      - uses: rubygems/release-gem@v1
