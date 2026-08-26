@@ -27,7 +27,7 @@ RSpec.describe PrivateSiteWithLogin do
       password: 'secret'
     )
 
-    expect(crawl.pages.map { |url, _page| url.to_s }).to contain_exactly(
+    expect(crawl.pages.keys.map(&:to_s)).to contain_exactly(
       start_url,
       'https://www.example.com/private/next'
     )
