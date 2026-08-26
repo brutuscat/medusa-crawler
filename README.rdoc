@@ -47,6 +47,15 @@ Or you can pass a block and it will yield the crawler back, to manage configurat
       end
     end
 
+To crawl a private site that uses a server-rendered login form, submit the form first and pass the
+session cookie to Medusa:
+
+    MEDUSA_USERNAME=user MEDUSA_PASSWORD=secret ruby examples/private_site_with_login.rb
+
+See +examples/private_site_with_login.rb+ for the complete example. It uses a regular HTTP form
+POST; sites that require JavaScript or a more involved CSRF flow need site-specific handling before
+starting Medusa.
+
 ---
 
 === Requirements
