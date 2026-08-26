@@ -1,0 +1,16 @@
+# Medusa
+
+> Medusa is a small programmable web crawler for Ruby.
+
+## Documentation
+
+- [README](https://github.com/brutuscat/medusa-crawler/blob/main/README.rdoc): installation and usage.
+- [Roadmap](https://github.com/brutuscat/medusa-crawler/blob/main/ROADMAP.md): planned releases.
+- [Source](https://github.com/brutuscat/medusa-crawler): source code.
+- [RubyGems](https://rubygems.org/gems/medusa-crawler): published gem.
+
+## Contributor guidance
+
+- [AGENTS.md](https://github.com/brutuscat/medusa-crawler/blob/main/AGENTS.md): project goals, quality rules, safety constraints, and testing expectations.
+
+Medusa performs HTTP crawling. Do not assume browser or JavaScript execution unless the documentation explicitly states otherwise.
