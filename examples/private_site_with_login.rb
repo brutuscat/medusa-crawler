@@ -8,12 +8,14 @@ require 'webrick/cookie'
 module PrivateSiteWithLogin
   module_function
 
-  def login_cookies(login_url:, username:, password:)
-    response = Net::HTTP.post_form(
-      URI(login_url),
-      'username' => username,
-      'password' => password
-    )
+  def login_cookies(login_url:, username:, password:, user_agent: "Medusa/#{Medusa::VERSION}")
+    uri = URI(login_url)
+    request = Net::HTTP::Post.new(uri)
+    request['User-Agent'] = user_agent
+    request.set_form_data('username' => username, 'password' => password)
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+      http.request(request)
+    end
 
     unless response.is_a?(Net::HTTPSuccess) || response.is_a?(Net::HTTPRedirection)
       raise "Login failed with HTTP #{response.code}"
@@ -29,9 +31,19 @@ module PrivateSiteWithLogin
   end
 
   def crawl(start_url:, login_url:, username:, password:, **options, &block)
-    cookies = login_cookies(login_url: login_url, username: username, password: password)
+    user_agent = options.fetch(:user_agent, "Medusa/#{Medusa::VERSION}")
+    cookies = login_cookies(
+      login_url: login_url,
+      username: username,
+      password: password,
+      user_agent: user_agent
+    )
 
-    Medusa.crawl(start_url, options.merge(cookies: cookies, accept_cookies: true), &block)
+    Medusa.crawl(
+      start_url,
+      options.merge(user_agent: user_agent, cookies: cookies, accept_cookies: true),
+      &block
+    )
   end
 end
 

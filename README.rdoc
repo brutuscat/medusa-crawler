@@ -56,6 +56,9 @@ See +examples/private_site_with_login.rb+ for the complete example. It uses a re
 POST; sites that require JavaScript or a more involved CSRF flow need site-specific handling before
 starting Medusa.
 
+The release smoke test in +spec/smoke/private_site_with_login_smoke.rb+ runs the example against a
+public test login and extracts text from its authenticated page.
+
 ---
 
 === Requirements

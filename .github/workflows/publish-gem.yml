@@ -10,7 +10,25 @@ permissions:
   id-token: write
 
 jobs:
+  private-login-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Crawl authenticated test page
+        run: bundle exec ruby spec/smoke/private_site_with_login_smoke.rb
+
   publish:
+    needs: private-login-smoke
     runs-on: ubuntu-latest
     environment: release
 

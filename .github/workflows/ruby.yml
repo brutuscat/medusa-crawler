@@ -24,3 +24,20 @@ jobs:
 
       - name: Test with RSpec
         run: bundle exec rspec spec
+
+  private-login-smoke:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby 3.3
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Crawl authenticated test page
+        run: bundle exec ruby spec/smoke/private_site_with_login_smoke.rb
