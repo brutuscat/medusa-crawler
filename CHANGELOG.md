@@ -1,3 +1,11 @@
+## Pre-release v2.0.0.pre.1 (2026-08-26)
+
+Changes:
+ - Require Ruby 3.3 or newer and test against Ruby 3.3, 3.4, and 4.0
+ - Add explicit `ostruct` and `webrick` runtime dependencies for modern Ruby releases
+ - Add trusted publishing to RubyGems through GitHub Actions
+ - Add project guidance, roadmap, and agent-readable documentation
+
 ## Release v1.0.0 (2020-08-17)
 Features:
 - Remove `PageStore#pages_linking_to`, `PageStore#urls_linking_to`
