@@ -26,6 +26,15 @@ jobs:
           bundler-cache: true
 
       - name: Verify tag matches gem version
-        run: ruby -e 'spec = Gem::Specification.load(%q[medusa.gemspec]); abort %q[Unable to load medusa.gemspec] unless spec; tag_version = ENV.fetch(%q[GITHUB_REF_NAME]).delete_prefix(%q[v]); gem_version = spec.version.to_s; abort %Q[Tag #{tag_version} does not match gem version #{gem_version}] unless tag_version == gem_version'
+        run: |
+          ruby <<'RUBY'
+          spec = Gem::Specification.load('medusa.gemspec')
+          abort 'Unable to load medusa.gemspec' unless spec
+
+          tag_version = ENV.fetch('GITHUB_REF_NAME').delete_prefix('v')
+          gem_version = spec.version.to_s
+
+          abort "Tag #{tag_version} does not match gem version #{gem_version}" unless tag_version == gem_version
+          RUBY
 
       - uses: rubygems/release-gem@v1

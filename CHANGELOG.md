@@ -1,3 +1,8 @@
+## Pre-release v2.0.0.pre.2 (2026-08-26)
+
+Fixes:
+ - Fix tag-version validation in the RubyGems publishing workflow
+
 ## Pre-release v2.0.0.pre.1 (2026-08-26)
 
 Changes:
