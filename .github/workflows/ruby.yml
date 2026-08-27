@@ -26,7 +26,6 @@ jobs:
         run: bundle exec rspec spec
 
   private-login-smoke:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
