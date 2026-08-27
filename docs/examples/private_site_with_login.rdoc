@@ -20,15 +20,15 @@ handling before Medusa begins crawling.
 
 === Authenticated-crawl smoke test
 
-+spec/examples/private_site_with_login_spec.rb+ exercises the example against the public login at
-https://the-internet.herokuapp.com. It signs in as +tomsmith+, crawls +/secure+, and extracts this
++spec/examples/private_site_with_login_spec.rb+ exercises the example against a local Docker service
+that runs +the-internet+. It signs in as +tomsmith+, crawls +/secure+, and extracts this
 authenticated-page text:
 
     Welcome to the Secure Area. When you are done click logout below.
 
 The smoke test runs after changes are merged to +main+ and again before a tagged gem release is
-published. Its +:smoke+ example retries the public test service up to three times, with a five-minute
-job timeout.
+published. The GitHub Actions service container is pinned by digest and the job waits for its login
+page before running the +:smoke+ example.
 
 === Why the smoke test does not log out
 

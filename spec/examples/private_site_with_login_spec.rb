@@ -70,36 +70,29 @@ RSpec.describe PrivateSiteWithLogin do
     expect(a_request(:get, start_url).with(headers: { 'User-Agent' => user_agent })).to have_been_made.once
   end
 
-  it 'crawls and extracts authenticated content from the public login example', :smoke do
+  it 'crawls and extracts authenticated content from the local login example', :smoke do
     WebMock.allow_net_connect!
 
-    site_url = 'https://the-internet.herokuapp.com/secure'
-    page = nil
+    base_url = ENV.fetch('MEDUSA_SMOKE_BASE_URL')
+    site_url = "#{base_url}/secure"
     message = nil
 
     begin
-      3.times do |attempt|
-        message = nil
-        crawl = described_class.crawl(
-          start_url: site_url,
-          login_url: 'https://the-internet.herokuapp.com/authenticate',
-          username: 'tomsmith',
-          password: 'SuperSecretPassword!',
-          threads: 1,
-          read_timeout: 15
-        ) do |crawler|
-          crawler.focus_crawl { [] }
-          crawler.on_pages_like(%r{/secure\z}) do |crawled_page|
-            message = crawled_page.doc&.at_css('h4.subheader')&.text&.strip if crawled_page.code == 200
-          end
+      crawl = described_class.crawl(
+        start_url: site_url,
+        login_url: "#{base_url}/authenticate",
+        username: 'tomsmith',
+        password: 'SuperSecretPassword!',
+        threads: 1,
+        read_timeout: 15
+      ) do |crawler|
+        crawler.focus_crawl { [] }
+        crawler.on_pages_like(%r{/secure\z}) do |crawled_page|
+          message = crawled_page.doc&.at_css('h4.subheader')&.text&.strip if crawled_page.code == 200
         end
-
-        page = crawl.pages[URI(site_url)]
-        break if page&.code == 200 && message&.start_with?('Welcome to the Secure Area')
-
-        warn "Authenticated crawl attempt #{attempt + 1} failed; retrying" if attempt < 2
       end
 
+      page = crawl.pages[URI(site_url)]
       expect(page&.code).to eq(200)
       expect(message).to start_with('Welcome to the Secure Area')
     ensure

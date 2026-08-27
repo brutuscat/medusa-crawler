@@ -29,6 +29,14 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+
+    services:
+      the_internet:
+        image: gprestes/the-internet@sha256:205b8fc712747ea5fa1a0d54b01fa02d65e3f67a448c7a5c2aba65b211def171
+        ports:
+          - 5000
 
     steps:
       - uses: actions/checkout@v4
@@ -40,4 +48,9 @@ jobs:
           bundler-cache: true
 
       - name: Crawl authenticated test page
-        run: MEDUSA_LIVE_SMOKE=1 bundle exec rspec spec/examples/private_site_with_login_spec.rb --tag smoke
+        env:
+          MEDUSA_LIVE_SMOKE: '1'
+          MEDUSA_SMOKE_BASE_URL: http://127.0.0.1:${{ job.services.the_internet.ports['5000'] }}
+        run: |
+          curl --fail --retry 15 --retry-all-errors --retry-delay 1 "$MEDUSA_SMOKE_BASE_URL/login" > /dev/null
+          bundle exec rspec spec/examples/private_site_with_login_spec.rb --tag smoke
