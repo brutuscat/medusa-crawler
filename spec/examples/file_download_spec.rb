@@ -7,9 +7,9 @@ require_relative '../../examples/file_download'
 RSpec.describe FileDownload do
   it 'writes linked non-HTML responses to the destination directory' do
     start_url = 'https://www.example.com/download'
-    file_url = 'https://www.example.com/download/report.txt'
+    file_url = 'https://www.example.com/files/report.txt'
     stub_request(:get, start_url)
-      .to_return(body: '<a href="/download/report.txt">Report</a>', headers: { 'Content-Type' => 'text/html' })
+      .to_return(body: '<a href="/files/report.txt">Report</a>', headers: { 'Content-Type' => 'text/html' })
     stub_request(:get, file_url)
       .to_return(body: 'report contents', headers: { 'Content-Type' => 'text/plain' })
 

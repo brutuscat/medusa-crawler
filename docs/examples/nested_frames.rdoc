@@ -1,4 +1,9 @@
 == Crawl nested frames
 
-Medusa follows anchors by default. The example in +examples/nested_frames.rb+ extends
-+focus_crawl+ to include same-domain +frame+ and +iframe+ sources.
+Medusa follows anchors by default, but a frame source is not an anchor. The example in
++examples/nested_frames.rb+ replaces the default link selection with +page.links+ plus same-domain
++frame[src]+ and +iframe[src]+ sources. Those sources are put on Medusa's crawl queue, fetched, and
+stored as regular Page objects; repeating the selection also reaches nested frames.
+
+It fetches the frame documents over HTTP. It does not render a browser page, execute JavaScript, or
+inspect an iframe created dynamically by JavaScript.

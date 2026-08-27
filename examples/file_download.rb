@@ -11,8 +11,8 @@ module FileDownload
     destination.mkpath
 
     Medusa.crawl(start_url, options) do |crawler|
-      crawler.on_pages_like(%r{/download/}) do |page|
-        next unless page.code == 200 && !page.html?
+      crawler.on_every_page do |page|
+        next unless page.referer && page.code == 200 && !page.html?
 
         destination.join(filename(page.url)).binwrite(page.body)
       end

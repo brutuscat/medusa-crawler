@@ -1,4 +1,7 @@
 == Find broken images
 
-The example in +examples/broken_images.rb+ adds same-domain image sources to the crawl and returns
-the image pages that responded with an HTTP error status.
+Images are not followed by Medusa's default anchor-only traversal. The example in
++examples/broken_images.rb+ adds same-domain +img[src]+ URLs to +focus_crawl+, so image responses are
+stored as Page objects too. It then returns the image pages whose HTTP status is 400 or higher.
+
+This checks HTTP availability, not visual rendering, image dimensions, or JavaScript-generated images.
