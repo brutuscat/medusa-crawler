@@ -40,4 +40,4 @@ jobs:
           bundler-cache: true
 
       - name: Crawl authenticated test page
-        run: bundle exec ruby spec/smoke/private_site_with_login_smoke.rb
+        run: MEDUSA_LIVE_SMOKE=1 bundle exec rspec spec/examples/private_site_with_login_spec.rb --tag smoke
