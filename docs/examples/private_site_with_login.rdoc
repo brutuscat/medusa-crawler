@@ -29,13 +29,3 @@ authenticated-page text:
 The smoke test runs after changes are merged to +main+ and again before a tagged gem release is
 published. The GitHub Actions service container is pinned by digest and the job waits for its login
 page before running the +:smoke+ example.
-
-=== Why the smoke test does not log out
-
-The quoted text is UI copy for a person using the demonstration website; it is not an instruction
-for the crawler. The smoke test fetches only the protected page and finishes. Its cookie is local to
-the short-lived CI process and disappears when that process exits.
-
-Following a logout link would add an unnecessary, site-specific state-changing request. A crawler
-should not follow logout links automatically; in a real authenticated crawl, exclude them explicitly
-when they are in scope.
