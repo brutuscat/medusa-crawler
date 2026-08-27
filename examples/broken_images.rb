@@ -17,8 +17,9 @@ module BrokenImages
       end
     end
 
-    broken = crawl.pages.each_value.select do |page|
-      image_urls.include?(page.url.to_s) && page.code >= 400
+    broken = []
+    crawl.pages.each_value do |page|
+      broken << page if image_urls.include?(page.url.to_s) && page.code >= 400
     end
 
     [crawl, broken]
