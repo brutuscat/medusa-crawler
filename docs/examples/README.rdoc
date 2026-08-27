@@ -1,0 +1,8 @@
+== Examples
+
+=== Crawl a private site with a login form
+
+The {private-site login example}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/private_site_with_login.rdoc] shows how to submit a
+server-rendered login form with +Net::HTTP+, preserve its session cookie, and pass that cookie to
+Medusa. It also explains the authenticated-crawl smoke test and why it deliberately does not follow
+logout links.
