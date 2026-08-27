@@ -1,3 +1,7 @@
 == Examples
 
 * {Crawl a private site with a login form}[private_site_with_login.rdoc]
+* {Crawl a site with HTTP Basic authentication}[basic_auth.rdoc]
+* {Download linked files}[file_download.rdoc]
+* {Crawl nested frames}[nested_frames.rdoc]
+* {Find broken images}[broken_images.rdoc]

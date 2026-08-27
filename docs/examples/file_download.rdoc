@@ -1,0 +1,4 @@
+== Download linked files
+
+The example in +examples/file_download.rb+ follows regular links and writes non-HTML responses to a
+destination directory.

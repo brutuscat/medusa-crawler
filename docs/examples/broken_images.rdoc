@@ -1,0 +1,4 @@
+== Find broken images
+
+The example in +examples/broken_images.rb+ adds same-domain image sources to the crawl and returns
+the image pages that responded with an HTTP error status.

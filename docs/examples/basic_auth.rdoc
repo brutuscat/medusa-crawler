@@ -1,0 +1,4 @@
+== Crawl a site with HTTP Basic authentication
+
+Use +http_basic_authentication:+ when every crawler request needs the same HTTP Basic credentials.
+The runnable code is in +examples/basic_auth.rb+.

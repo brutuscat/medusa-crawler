@@ -40,10 +40,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Ruby 3.3
+      - id: select-ruby
+        name: Select Ruby version
+        shell: bash
+        run: |
+          versions=(3.3 3.4 4.0)
+          echo "version=${versions[RANDOM % ${#versions[@]}]}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Ruby ${{ steps.select-ruby.outputs.version }}
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: ${{ steps.select-ruby.outputs.version }}
           bundler-cache: true
 
       - name: Crawl authenticated test page
@@ -52,4 +59,4 @@ jobs:
           MEDUSA_SMOKE_BASE_URL: http://127.0.0.1:${{ job.services.the_internet.ports['5000'] }}
         run: |
           curl --fail --retry 15 --retry-all-errors --retry-delay 1 "$MEDUSA_SMOKE_BASE_URL/login" > /dev/null
-          bundle exec rspec spec/examples/private_site_with_login_spec.rb --tag smoke
+          bundle exec rspec spec/examples --tag smoke

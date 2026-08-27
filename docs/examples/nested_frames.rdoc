@@ -1,0 +1,4 @@
+== Crawl nested frames
+
+Medusa follows anchors by default. The example in +examples/nested_frames.rb+ extends
++focus_crawl+ to include same-domain +frame+ and +iframe+ sources.
