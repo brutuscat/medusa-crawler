@@ -1,4 +1,4 @@
-== Medusa: a ruby crawler framework {rdoc-image:https://badge.fury.io/rb/medusa-crawler.svg}[https://rubygems.org/gems/medusa-crawler] rdoc-image:https://github.com/brutuscat/medusa-crawler/workflows/Ruby/badge.svg?event=push
+== Medusa: a ruby crawler framework {rdoc-image:https://badge.fury.io/rb/medusa-crawler.svg}[https://rubygems.org/gems/medusa-crawler] rdoc-image:https://github.com/brutuscat/medusa-crawler/actions/workflows/ruby.yml/badge.svg?branch=main&event=push[https://github.com/brutuscat/medusa-crawler/actions/workflows/ruby.yml]
 
 Medusa is a framework for the ruby language to crawl and collect useful information about the pages
 it visits. It is versatile, allowing you to write your own specialized tasks quickly and easily.
@@ -73,4 +73,4 @@ Copyright (c) 2009 Vertive, Inc.
 
 Copyright (c) 2020 Mauro Asprea
 
-Released under the {MIT License}[https://github.com/brutuscat/medusa-crawler/blob/master/LICENSE.txt]
+Released under the {MIT License}[https://github.com/brutuscat/medusa-crawler/blob/main/LICENSE.txt]
