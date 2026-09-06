@@ -1,0 +1,31 @@
+== Crawl a private site with a login form
+
+Medusa is an HTTP crawler, not browser automation. For a site with a conventional server-rendered
+login form, authenticate first with +Net::HTTP+ and then give the session cookie to Medusa.
+
+The runnable code is in +examples/private_site_with_login.rb+:
+
+    MEDUSA_USERNAME=user MEDUSA_PASSWORD=secret ruby examples/private_site_with_login.rb
+
+The example submits +username+ and +password+ to the configured login endpoint, obtains the
++Set-Cookie+ response header, and starts Medusa with +cookies:+ and +accept_cookies:+ enabled.
+It also uses the same User-Agent for the login request and the crawler. Some sites bind a session to
+that header, so changing it after authentication can invalidate an otherwise valid cookie.
+
+=== Scope
+
+This pattern is suitable for normal form POST logins that return a session cookie. JavaScript
+authentication, multi-step or site-specific CSRF flows, MFA, OAuth, and CAPTCHA need site-specific
+handling before Medusa begins crawling.
+
+=== Authenticated-crawl smoke test
+
++spec/examples/private_site_with_login_spec.rb+ exercises the example against a local Docker service
+that runs +the-internet+. It signs in as +tomsmith+, crawls +/secure+, and extracts this
+authenticated-page text:
+
+    Welcome to the Secure Area. When you are done click logout below.
+
+The smoke test runs after changes are merged to +main+ and again before a tagged gem release is
+published. The GitHub Actions service container is pinned by digest and the job waits for its login
+page before running the +:smoke+ example.

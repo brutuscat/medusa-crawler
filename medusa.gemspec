@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     CONTRIBUTORS.md
     README.rdoc
     Rakefile
-  ] + Dir['lib/**/*.rb']
+  ] + Dir['lib/**/*.rb'] + Dir['examples/**/*.rb']
 
   s.test_files = Dir['spec/*.rb']
 end

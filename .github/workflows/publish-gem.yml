@@ -10,7 +10,46 @@ permissions:
   id-token: write
 
 jobs:
+  private-login-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    services:
+      the_internet:
+        image: gprestes/the-internet@sha256:205b8fc712747ea5fa1a0d54b01fa02d65e3f67a448c7a5c2aba65b211def171
+        ports:
+          - 5000
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - id: select-ruby
+        name: Select Ruby version
+        shell: bash
+        run: |
+          versions=(3.3 3.4 4.0)
+          echo "version=${versions[RANDOM % ${#versions[@]}]}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Ruby ${{ steps.select-ruby.outputs.version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ steps.select-ruby.outputs.version }}
+          bundler-cache: true
+
+      - name: Crawl authenticated test page
+        env:
+          MEDUSA_LIVE_SMOKE: '1'
+          MEDUSA_SMOKE_BASE_URL: http://127.0.0.1:${{ job.services.the_internet.ports['5000'] }}
+        run: |
+          curl --fail --retry 15 --retry-all-errors --retry-delay 1 "$MEDUSA_SMOKE_BASE_URL/login" > /dev/null
+          bundle exec rspec spec/examples --tag smoke
+
   publish:
+    needs: private-login-smoke
     runs-on: ubuntu-latest
     environment: release
 

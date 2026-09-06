@@ -1,0 +1,5 @@
+== Crawl a site with HTTP Basic authentication
+
+Use +http_basic_authentication:+ when every crawler request needs the same HTTP Basic credentials.
+The example in +examples/basic_auth.rb+ passes a username/password pair to Medusa, which sends it
+with each request. This is HTTP Basic authentication, not a login form or HTTP Digest authentication.

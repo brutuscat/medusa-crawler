@@ -47,6 +47,8 @@ Or you can pass a block and it will yield the crawler back, to manage configurat
       end
     end
 
+For more complete examples, see the {examples documentation}[https://github.com/brutuscat/medusa-crawler/tree/main/docs/examples].
+
 ---
 
 === Requirements
