@@ -151,6 +151,32 @@ module Medusa
         expect(page.links[0]).to be_a(URI)
         expect(page.links[0].to_s).to eq('http://www.example.com/get_me')
       end
+
+      it 'decodes HTML entities in href attributes' do
+        body = '<a href="/search?a=1&amp;b=2">Search</a>'
+        page = @http.fetch_page(FakePage.new('entity', body: body).url)
+
+        expect(page.links.map(&:to_s)).to eq(["#{SPEC_DOMAIN}search?a=1&b=2"])
+      end
+
+      it 'recovers links from unclosed anchor tags' do
+        body = '<a href="/one">One<a href="/two">Two'
+        page = @http.fetch_page(FakePage.new('unclosed', body: body).url)
+
+        expect(page.links.map(&:to_s)).to contain_exactly(
+          "#{SPEC_DOMAIN}one",
+          "#{SPEC_DOMAIN}two"
+        )
+      end
+
+      it 'preserves UTF-8 page text while extracting links' do
+        body = '<meta charset="utf-8"><a href="/caf%C3%A9">Café</a>'
+        page = @http.fetch_page(FakePage.new('utf8', body: body).url)
+
+        expect(page.doc.at_xpath('//a').text).to eq('Café')
+        expect(page.links.map(&:to_s)).to eq(["#{SPEC_DOMAIN}caf%C3%A9"])
+      end
+
     end
 
     it "should detect, store and expose the base url for the page head" do
