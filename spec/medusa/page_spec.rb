@@ -151,8 +151,6 @@ module Medusa
         expect(page.links[0]).to be_a(URI)
         expect(page.links[0].to_s).to eq('http://www.example.com/get_me')
       end
-    end
-
 
       it 'decodes HTML entities in href attributes' do
         body = '<a href="/search?a=1&amp;b=2">Search</a>'
@@ -178,6 +176,9 @@ module Medusa
         expect(page.doc.at_xpath('//a').text).to eq('Café')
         expect(page.links.map(&:to_s)).to eq(["#{SPEC_DOMAIN}caf%C3%A9"])
       end
+
+
+    end
 
     it "should detect, store and expose the base url for the page head" do
       base = "#{SPEC_DOMAIN}path/to/base_url/"
