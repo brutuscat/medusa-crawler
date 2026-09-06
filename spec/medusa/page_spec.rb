@@ -177,7 +177,6 @@ module Medusa
         expect(page.links.map(&:to_s)).to eq(["#{SPEC_DOMAIN}caf%C3%A9"])
       end
 
-
     end
 
     it "should detect, store and expose the base url for the page head" do
