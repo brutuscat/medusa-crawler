@@ -16,11 +16,11 @@ spec = Gem::Specification.new do |s|
   s.require_path = 'lib'
   s.rdoc_options << '-m' << 'README.rdoc' << '-t' << 'Medusa'
   s.extra_rdoc_files = ['README.rdoc']
-  s.add_runtime_dependency('moneta', '~> 1.3', '>= 1.3.0')
-  s.add_runtime_dependency('nokogiri', '~> 1.3', '>= 1.3.0')
-  s.add_runtime_dependency('ostruct', '>= 0.6', '< 1.0')
+  s.add_runtime_dependency('moneta', '~> 1.6', '>= 1.6.0')
+  s.add_runtime_dependency('nokogiri', '~> 1.19', '>= 1.19.4')
+  s.add_runtime_dependency('ostruct', '>= 0.6.3', '< 1.0')
   s.add_runtime_dependency('robotex', '~> 1.0', '>= 1.0.0')
-  s.add_runtime_dependency('webrick', '>= 1.8', '< 2.0')
+  s.add_runtime_dependency('webrick', '~> 1.9', '>= 1.9.2')
 
   # Trusted publishing authenticates releases with OIDC. Keep manual signing
   # available only when the maintainer's legacy private key is present.
