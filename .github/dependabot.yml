@@ -4,7 +4,7 @@ updates:
     directory: '/'
     schedule:
       interval: daily
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: widen
 
   - package-ecosystem: github-actions
     directory: '/'
