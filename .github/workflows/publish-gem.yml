@@ -6,63 +6,39 @@ on:
       - v*
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
+
+env:
+  BUNDLE_WITHOUT: debugging_tools
+  BUNDLE_LOCKFILE: /tmp/medusa-release.lock
 
 jobs:
-  private-login-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  ci:
+    uses: ./.github/workflows/ruby.yml
     permissions:
       contents: read
 
-    services:
-      the_internet:
-        image: gprestes/the-internet@sha256:205b8fc712747ea5fa1a0d54b01fa02d65e3f67a448c7a5c2aba65b211def171
-        ports:
-          - 5000
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - id: select-ruby
-        name: Select Ruby version
-        shell: bash
-        run: |
-          versions=(3.3 3.4 4.0)
-          echo "version=${versions[RANDOM % ${#versions[@]}]}" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Ruby ${{ steps.select-ruby.outputs.version }}
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ steps.select-ruby.outputs.version }}
-          bundler-cache: true
-
-      - name: Crawl authenticated test page
-        env:
-          MEDUSA_LIVE_SMOKE: '1'
-          MEDUSA_SMOKE_BASE_URL: http://127.0.0.1:${{ job.services.the_internet.ports['5000'] }}
-        run: |
-          curl --fail --retry 15 --retry-all-errors --retry-delay 1 "$MEDUSA_SMOKE_BASE_URL/login" > /dev/null
-          bundle exec rspec spec/examples --tag smoke
-
   publish:
-    needs: private-login-smoke
+    needs: ci
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: ruby
-          bundler-cache: true
+          bundler: '4.0.20'
+
+      - name: Install release dependencies
+        run: bundle install
 
       - name: Verify tag matches gem version
         run: |
@@ -76,4 +52,4 @@ jobs:
           abort "Tag #{tag_version} does not match gem version #{gem_version}" unless tag_version == gem_version
           RUBY
 
-      - uses: rubygems/release-gem@v1
+      - uses: rubygems/release-gem@7f9650160c1a4e7989fdc9855807bdbd421d8b6b # v1

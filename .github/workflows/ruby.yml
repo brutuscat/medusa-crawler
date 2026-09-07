@@ -2,7 +2,17 @@ name: Ruby
 
 on:
   push:
+    branches:
+      - '**'
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_WITHOUT: debugging_tools
+  BUNDLE_LOCKFILE: /tmp/medusa-ci.lock
 
 jobs:
   test:
@@ -14,22 +24,47 @@ jobs:
         ruby: ['3.3', '3.4', '4.0']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Setup Ruby ${{ matrix.ruby }}
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler-cache: true
+          bundler: '4.0.20'
+
+      - name: Install dependencies
+        run: bundle install
 
       - name: Test with RSpec
+        run: bundle exec rspec spec
+
+  minimum-dependencies:
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/minimum.gemfile
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup minimum supported Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: '3.3'
+          bundler: '4.0.20'
+
+      - name: Install minimum runtime dependencies
+        run: bundle install
+
+      - name: Test minimum runtime dependencies
         run: bundle exec rspec spec
 
   private-login-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
 
     services:
       the_internet:
@@ -38,7 +73,9 @@ jobs:
           - 5000
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - id: select-ruby
         name: Select Ruby version
@@ -48,10 +85,13 @@ jobs:
           echo "version=${versions[RANDOM % ${#versions[@]}]}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby ${{ steps.select-ruby.outputs.version }}
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: ${{ steps.select-ruby.outputs.version }}
-          bundler-cache: true
+          bundler: '4.0.20'
+
+      - name: Install dependencies
+        run: bundle install
 
       - name: Crawl authenticated test page
         env:
