@@ -1,7 +1,7 @@
 == Examples
 
-* {Crawl a private site with a login form}[private_site_with_login.rdoc]
-* {Crawl a site with HTTP Basic authentication}[basic_auth.rdoc]
-* {Download linked files}[file_download.rdoc]
-* {Crawl nested frames}[nested_frames.rdoc]
-* {Find broken images}[broken_images.rdoc]
+* {Crawl a private site with a login form}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/private_site_with_login.rdoc]
+* {Crawl a site with HTTP Basic authentication}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/basic_auth.rdoc]
+* {Download linked files}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/file_download.rdoc]
+* {Crawl nested frames}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/nested_frames.rdoc]
+* {Find broken images}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/broken_images.rdoc]
