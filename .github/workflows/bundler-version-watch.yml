@@ -1,6 +1,7 @@
 name: Bundler version watch
 
 on:
+  pull_request:
   schedule:
     - cron: '17 6 1 */2 *'
   workflow_dispatch:
