@@ -11,7 +11,8 @@ namespace :docs do
     sources = Dir.glob(['*.md', '*.rdoc', 'docs/**/*.md', 'docs/**/*.rdoc']).sort
     abort 'No documentation files found' if sources.empty?
 
-    Dir.mktmpdir('medusa-docs-') do |output|
+    Dir.mktmpdir('medusa-docs-') do |tmpdir|
+      output = File.join(tmpdir, 'rdoc')
       sh Gem.ruby, '-S', 'rdoc', '--quiet', '--op', output, '--main', 'README.rdoc', *sources
 
       server = WEBrick::HTTPServer.new(
