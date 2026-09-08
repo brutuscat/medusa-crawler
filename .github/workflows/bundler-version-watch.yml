@@ -1,7 +1,9 @@
 name: Bundler version watch
 
 on:
-  pull_request:
+  push:
+    branches:
+      - hardening/dependency-supply-chain
   schedule:
     - cron: '17 6 1 */2 *'
   workflow_dispatch:
