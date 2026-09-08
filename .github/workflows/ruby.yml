@@ -62,6 +62,27 @@ jobs:
       - name: Test minimum runtime dependencies
         run: bundle exec rspec spec
 
+  docs-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: '3.3'
+          bundler: '4.0.20'
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Check documentation links with Medusa
+        run: bundle exec rake docs:links
+
   private-login-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 5
