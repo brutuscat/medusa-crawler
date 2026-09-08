@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'medusa'
-require 'rdoc'
 require 'tmpdir'
 require 'timeout'
 require 'webrick'
