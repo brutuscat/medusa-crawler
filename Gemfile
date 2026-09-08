@@ -1,3 +1,8 @@
+required_bundler = Gem::Version.new('4.0.13')
+if Gem::Version.new(Bundler::VERSION) < required_bundler
+  raise "Medusa development requires Bundler >= #{required_bundler}"
+end
+
 source 'https://rubygems.org', cooldown: 3
 
 # This is a library: Gemfile.lock is intentionally not committed. Consumers
