@@ -1,0 +1,35 @@
+name: Dependency edge
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_WITHOUT: debugging_tools
+  BUNDLE_LOCKFILE: /tmp/medusa-edge.lock
+
+jobs:
+  latest-compatible:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: '4.0'
+          bundler: '4.0.20'
+
+      - name: Resolve newest compatible dependencies
+        run: bundle install --cooldown=0
+
+      - name: Test with newest compatible dependencies
+        run: bundle exec rspec spec

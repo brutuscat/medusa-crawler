@@ -1,7 +1,12 @@
 version: 2
 updates:
-- package-ecosystem: bundler
-  directory: "/"
-  schedule:
-    interval: daily
-  versioning-strategy: increase-if-necessary
+  - package-ecosystem: bundler
+    directory: '/'
+    schedule:
+      interval: daily
+    versioning-strategy: auto
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
