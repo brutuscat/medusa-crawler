@@ -18,7 +18,7 @@ module Medusa
       ].freeze
 
       Result = Data.define(:body, :headers, :response_time, :code, :redirect_to, :from_cache)
-      Context = Data.define(:url, :key, :entry)
+      Context = Data.define(:url, :key, :entry, :validation_entry)
 
       class << self
         def build(option, logger: nil)
@@ -69,7 +69,7 @@ module Medusa
         end
 
         debug('freshness', url: url, result: :stale) if context.entry && strategy == :freshness
-        headers = normalized_headers.merge(conditional_headers(context.entry))
+        headers = normalized_headers.merge(conditional_headers(context.validation_entry))
         network = request.call(headers)
 
         if network.code.to_i == 304
@@ -92,19 +92,44 @@ module Medusa
         bucket = read_bucket(key, url)
         unless bucket
           debug('lookup', url: url, result: :absent)
-          return Context.new(url, key, nil)
+          return Context.new(url: url, key: key, entry: nil, validation_entry: nil)
         end
 
         variants = bucket['variants']
-        index = variants.index { |entry| entry_matches?(entry, request_headers) }
-        if index.nil?
-          debug('lookup', url: url, result: :variant_mismatch)
-          return Context.new(url, key, nil)
+        entry = variants.find { |candidate| entry_matches?(candidate, request_headers) }
+        validation_entry = if entry && validator?(entry)
+          entry
+        elsif entry
+          nil
+        else
+          validation_candidate(variants)
         end
 
-        entry = snapshot(variants[index])
-        debug('lookup', url: url, result: :matched)
-        Context.new(url, key, entry)
+        if entry
+          debug('lookup', url: url, result: :matched)
+        elsif validation_entry
+          debug('lookup', url: url, result: :validation_candidate)
+        else
+          debug('lookup', url: url, result: :variant_mismatch)
+        end
+
+        Context.new(
+          url: url,
+          key: key,
+          entry: snapshot(entry),
+          validation_entry: snapshot(validation_entry)
+        )
+      end
+
+      def validation_candidate(entries)
+        entries
+          .select { |entry| usable_entry?(entry) && validator?(entry) }
+          .max_by { |entry| entry['stored_at'].to_f }
+      end
+
+      def validator?(entry)
+        headers = entry['headers'] || {}
+        headers.key?('etag') || headers.key?('last-modified')
       end
 
       def serve_fresh?(context)
@@ -116,15 +141,16 @@ module Medusa
       end
 
       def resolve_not_modified(context, network, request_headers)
-        unless usable_entry?(context.entry)
+        source = context.validation_entry
+        unless usable_entry?(source)
           warn_log('invalid_revalidation', url: context.url, reason: :representation_missing)
           unconditional = yield strip_conditional_headers(request_headers)
           return resolve_network_response(context_without_entry(context), unconditional, request_headers)
         end
 
-        headers = merge_revalidation_headers(context.entry['headers'], network.headers)
+        headers = merge_revalidation_headers(source['headers'], network.headers)
         vary = vary_headers(headers)
-        entry = context.entry.merge(
+        entry = source.merge(
           'headers' => headers,
           'vary' => vary,
           'vary_values' => vary_values(vary, request_headers),
@@ -132,10 +158,10 @@ module Medusa
         )
 
         if cache_control(headers).key?('no-store')
-          remove_entry(context)
+          remove_entry(context, source)
           debug('bypass', url: context.url, reason: :no_store)
         else
-          write_entry(context, entry)
+          write_entry(context, entry, replacing: source)
         end
         debug('revalidate', url: context.url, result: :not_modified)
 
@@ -170,7 +196,7 @@ module Medusa
       end
 
       def context_without_entry(context)
-        Context.new(context.url, context.key, nil)
+        Context.new(url: context.url, key: context.key, entry: nil, validation_entry: nil)
       end
 
       def cacheable?(result)
@@ -214,12 +240,12 @@ module Medusa
         }
       end
 
-      def write_entry(context, entry)
+      def write_entry(context, entry, replacing: context.entry)
         @mutex.synchronize do
           bucket = read_bucket_unlocked(context.key, context.url) || empty_bucket
           variants = bucket['variants'].map { |variant| snapshot(variant) }
 
-          previous_index = context.entry && variants.index { |variant| same_variant?(variant, context.entry) }
+          previous_index = replacing && variants.index { |variant| same_variant?(variant, replacing) }
           if previous_index
             variants[previous_index] = entry
           else
@@ -231,13 +257,15 @@ module Medusa
         end
       end
 
-      def remove_entry(context)
+      def remove_entry(context, entry = context.entry)
+        return unless entry
+
         @mutex.synchronize do
           bucket = read_bucket_unlocked(context.key, context.url)
           return unless bucket
 
           variants = bucket['variants'].map { |variant| snapshot(variant) }
-          variants.reject! { |variant| same_variant?(variant, context.entry) }
+          variants.reject! { |variant| same_variant?(variant, entry) }
 
           if variants.empty?
             delete_store(context.key, context.url)
@@ -303,10 +331,9 @@ module Medusa
 
       def entry_matches?(entry, request_headers)
         return false unless usable_entry?(entry)
+        return false if vary_star?(entry)
 
         vary = Array(entry['vary'])
-        return true if vary_star?(entry)
-
         expected = entry['vary_values'] || {}
         vary.all? { |name| expected[name] == request_headers[name] }
       end
