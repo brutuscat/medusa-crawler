@@ -3,6 +3,7 @@ require 'cgi'
 require 'nokogiri'
 require 'ostruct'
 require 'webrick/cookie'
+require 'medusa/http/cache/page_metadata'
 
 module Medusa
   class Page
@@ -158,7 +159,6 @@ module Medusa
     #
     def to_absolute(link)
       return nil if link.nil?
-
       # remove anchor
       link = link.to_s.gsub(/#.*$/,'')
       if Gem::Requirement.new('< 2.5').satisfied_by?(Gem::Version.new(RUBY_VERSION))
@@ -182,26 +182,31 @@ module Medusa
     end
 
     def marshal_dump
-      [@url, @headers, @data, @body, @links, @code, @visited, @depth, @referer, @redirect_to, @response_time, @fetched]
+      [@url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
+       @redirect_to, @response_time, @fetched, cache_metadata_value]
     end
 
     def marshal_load(ary)
-      @url, @headers, @data, @body, @links, @code, @visited, @depth, @referer, @redirect_to, @response_time, @fetched = ary
+      @url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
+        @redirect_to, @response_time, @fetched, from_cache = ary
+      restore_cache_metadata(from_cache) unless from_cache.nil?
     end
 
     def to_hash
-      {'url' => @url.to_s,
-       'headers' => Marshal.dump(@headers),
-       'data' => Marshal.dump(@data),
-       'body' => @body,
-       'links' => links.map(&:to_s),
-       'code' => @code,
-       'visited' => @visited,
-       'depth' => @depth,
-       'referer' => @referer.to_s,
-       'redirect_to' => @redirect_to.to_s,
-       'response_time' => @response_time,
-       'fetched' => @fetched}
+      hash = {'url' => @url.to_s,
+              'headers' => Marshal.dump(@headers),
+              'data' => Marshal.dump(@data),
+              'body' => @body,
+              'links' => links.map(&:to_s),
+              'code' => @code,
+              'visited' => @visited,
+              'depth' => @depth,
+              'referer' => @referer.to_s,
+              'redirect_to' => @redirect_to.to_s,
+              'response_time' => @response_time,
+              'fetched' => @fetched}
+      hash['http_cache_from_cache'] = @http_cache_from_cache if instance_variable_defined?(:@http_cache_from_cache)
+      hash
     end
 
     def self.from_hash(hash)
@@ -220,7 +225,19 @@ module Medusa
       }.each do |var, value|
         page.instance_variable_set(var, value)
       end
+      page.send(:restore_cache_metadata, hash['http_cache_from_cache']) if hash.key?('http_cache_from_cache')
       page
+    end
+
+    private
+
+    def cache_metadata_value
+      @http_cache_from_cache if instance_variable_defined?(:@http_cache_from_cache)
+    end
+
+    def restore_cache_metadata(from_cache)
+      @http_cache_from_cache = !!from_cache
+      extend(Medusa::HTTP::Cache::PageMetadata)
     end
   end
 end
