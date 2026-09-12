@@ -1,0 +1,42 @@
+== Incremental crawling with HTTP cache validation
+
+Medusa can keep HTTP representations separately from its normal PageStore and reuse them across
+crawl runs. This is useful when the crawler should revisit URLs but avoid downloading an unchanged
+body again.
+
+The runnable code is in +examples/incremental_crawl.rb+. It uses a persistent Moneta file store:
+
+    cache_store = Medusa::Storage.Moneta(:File, dir: '.medusa-http-cache')
+
+    Medusa.crawl(
+      'https://www.example.com/',
+      http_cache: {store: cache_store, strategy: :revalidation}
+    ) do |crawler|
+      crawler.on_every_page do |page|
+        puts "#{page.url} from_cache=#{page.from_cache?}"
+      end
+    end
+
+With +:revalidation+, Medusa contacts the origin on each revisit when a stored response has an ETag
+or Last-Modified validator. It sends +If-None-Match+ and/or +If-Modified-Since+. A +304 Not Modified+
+response reuses the complete stored representation, so ordinary Page consumers still receive a
+usable body and the effective response status. +page.from_cache?+ is true when the representation
+body came from the HTTP cache.
+
+Use +strategy: :freshness+ when HTTP freshness rules should be honored too. A response that is still
+fresh according to +Cache-Control: max-age+ or +Expires+ can then be reused without contacting the
+origin. Stale responses are revalidated when possible.
+
+HTTP caching is opt-in. +http_cache: true+ enables the default in-memory cache with the
++:revalidation+ strategy. For reuse across processes or later runs, provide a persistent Moneta
+store as shown above. The HTTP cache is separate from Medusa's PageStore; do not rely on
++clear_on_startup+ to clear HTTP cache entries.
+
+Medusa treats this as a private HTTP cache: +Cache-Control: private+ responses may be stored,
++no-store+ responses are not retained, and +no-cache+ responses are revalidated before reuse.
++Vary+ is honored; +Vary: *+ is never served as a freshness hit but may still be retained for
+conditional revalidation.
+
+For debugging, pass a Ruby Logger-compatible object with +logger:+. Cache decisions are emitted at
+DEBUG level and abnormal cache/storage states at WARN level. Medusa does not log response bodies,
+cookies, or authentication credentials.

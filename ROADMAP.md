@@ -8,6 +8,7 @@
 - Refresh the README, examples, changelog, and gem metadata.
 - Add contributor and agent guidance.
 - Launch a proper Medusa project website with getting started, API documentation, examples, RubyGems/source links, Markdown-friendly documentation, and `llms.txt`.
+- Add optional private HTTP caching with ETag and Last-Modified conditional requests, `304 Not Modified` reuse, freshness handling, `Vary`, persistent cache stores, and cache diagnostics.
 - Preserve the Medusa 1 crawl model and public API where practical.
 
 ## 2.1 - Concurrency
@@ -24,13 +25,6 @@
 - Add missing reusable crawl bounds and controls where justified.
 - Expand examples for modern programmatic crawling and downstream document processing.
 - Improve agent-readable documentation without adding agent or AI dependencies to the core gem.
-
-## 2.3 - Incremental crawling
-
-- Add conditional HTTP requests using ETag and Last-Modified metadata.
-- Handle `304 Not Modified` efficiently.
-- Expose freshness metadata needed by revisit workflows.
-- Add examples for comparing successive crawl results.
 
 ## Later 2.x
 
