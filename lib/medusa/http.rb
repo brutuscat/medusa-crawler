@@ -13,8 +13,8 @@ module Medusa
     # CookieStore for this HTTP client
     attr_reader :cookie_store
 
-    def initialize(opts = {}, cache: nil)
-      @opts = opts
+    def initialize(opts = {}, cache: nil, **keyword_opts)
+      @opts = keyword_opts.empty? ? opts : opts.merge(keyword_opts)
       @cookie_store = CookieStore.new(@opts[:cookies])
       @cache = cache || Cache.build(@opts[:http_cache], logger: @opts[:logger])
     end
