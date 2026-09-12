@@ -12,9 +12,30 @@ it visits. It is versatile, allowing you to write your own specialized tasks qui
 * Records response time for each page
 * Obey _robots.txt_ directives (optional, but recommended)
 * In-memory or persistent storage of pages during crawl, provided by Moneta[https://github.com/moneta-rb/moneta]
+* Optional private HTTP caching with ETag, Last-Modified, +304 Not Modified+, freshness, and +Vary+ support
 * Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
 
 <b>Do you have an idea or a suggestion? {Open an issue and talk about it}[https://github.com/brutuscat/medusa-crawler/issues/new]</b>
+
+=== HTTP cache
+
+HTTP caching is opt-in and separate from Medusa's normal PageStore. Use +:revalidation+ to revisit
+an origin conditionally on every cached request, or +:freshness+ to reuse responses while their HTTP
+freshness lifetime is valid and revalidate them when stale:
+
+    cache = Medusa::Storage.Moneta(:File, dir: '.medusa-http-cache')
+
+    Medusa.crawl('https://www.example.com',
+      http_cache: {store: cache, strategy: :revalidation}) do |crawler|
+      crawler.on_every_page do |page|
+        puts "#{page.url} from_cache=#{page.from_cache?}"
+      end
+    end
+
++http_cache: true+ uses an in-memory cache and the +:revalidation+ strategy. Pages are extended with
++from_cache?+ only while HTTP caching is enabled; ordinary Page consumers do not need to change.
+See the {incremental crawl example}[https://github.com/brutuscat/medusa-crawler/blob/main/docs/examples/incremental_crawl.rdoc]
+for persistence, freshness behavior, cache-control semantics, and debug logging.
 
 === Examples
 
