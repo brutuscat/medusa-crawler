@@ -126,7 +126,26 @@ module Medusa
       expect(spanish.body).to eq('Español')
     end
 
-    it 'never treats Vary: * as a freshness hit but can revalidate it' do
+    it 'stores Vary: * but never uses it as a freshness match' do
+      cache = described_class.new(store: store, strategy: :freshness)
+
+      cache.fetch(url) do
+        response(body: 'first', headers: {'cache-control' => 'max-age=60', 'vary' => '*'})
+      end
+
+      expect(store).not_to be_empty
+
+      second = cache.fetch(url) do |headers|
+        expect(headers).not_to have_key('if-none-match')
+        expect(headers).not_to have_key('if-modified-since')
+        response(body: 'second', headers: {'cache-control' => 'max-age=60', 'vary' => '*'})
+      end
+
+      expect(second.from_cache).to be(false)
+      expect(second.body).to eq('second')
+    end
+
+    it 'uses a stored Vary: * response as a validation candidate' do
       cache = described_class.new(store: store, strategy: :freshness)
 
       cache.fetch(url) do
@@ -140,6 +159,34 @@ module Medusa
 
       expect(second.from_cache).to be(true)
       expect(second.body).to eq('body')
+    end
+
+    it 'can validate a stored response that does not match the current Vary selectors' do
+      cache = described_class.new(store: store, strategy: :freshness)
+
+      cache.fetch(url, {'Accept-Language' => 'en'}) do
+        response(
+          body: 'English',
+          headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language', 'etag' => '"en"'}
+        )
+      end
+
+      spanish = cache.fetch(url, {'Accept-Language' => 'es'}) do |headers|
+        expect(headers['if-none-match']).to eq('"en"')
+        response(
+          body: 'Español',
+          headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language', 'etag' => '"es"'}
+        )
+      end
+
+      expect(spanish.from_cache).to be(false)
+      expect(spanish.body).to eq('Español')
+
+      english = cache.fetch(url, {'Accept-Language' => 'en'}) { raise 'expected English cache hit' }
+      spanish = cache.fetch(url, {'Accept-Language' => 'es'}) { raise 'expected Spanish cache hit' }
+
+      expect(english.body).to eq('English')
+      expect(spanish.body).to eq('Español')
     end
 
     it 'keeps the selected representation in memory while revalidation is in flight' do
