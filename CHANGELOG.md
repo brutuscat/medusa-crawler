@@ -1,3 +1,11 @@
+## Unreleased
+
+Features:
+ - Add opt-in private HTTP caching to 2.0 with ETag and Last-Modified revalidation, `304 Not Modified` reuse, HTTP freshness handling, and `Vary` support
+ - Add persistent HTTP cache stores through the existing Moneta abstraction without adding runtime dependencies
+ - Extend cache-enabled pages with `from_cache?` while keeping the normal Page API unchanged when caching is disabled
+ - Add optional Ruby Logger-compatible HTTP cache diagnostics
+
 ## Pre-release v2.0.0.pre.2 (2026-08-26)
 
 Fixes:
