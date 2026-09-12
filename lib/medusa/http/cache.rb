@@ -11,6 +11,7 @@ module Medusa
       STRATEGIES = %i[revalidation freshness].freeze
       CACHEABLE_STATUS = 200
       SENSITIVE_HEADERS = %w[authorization cookie].freeze
+      CONDITIONAL_HEADERS = %w[if-none-match if-modified-since].freeze
       REVALIDATION_HEADERS = %w[date age cache-control expires etag last-modified vary content-location].freeze
       STORED_HEADER_EXCLUSIONS = %w[
         connection keep-alive proxy-authenticate proxy-authorization set-cookie
@@ -35,7 +36,8 @@ module Medusa
           raise ArgumentError, "unknown http_cache option(s): #{unknown.join(', ')}" unless unknown.empty?
 
           store = config[:store] || Storage.Moneta(:Memory, prefix: 'medusa-http-cache')
-          new(store: store, strategy: config.fetch(:strategy, :revalidation), logger: logger)
+          strategy = config.fetch(:strategy, :revalidation)
+          new(store:, strategy:, logger:)
         end
       end
 
@@ -64,17 +66,15 @@ module Medusa
 
         if serve_fresh?(context)
           entry = context.entry
-          debug('freshness', url: url, result: :fresh)
+          debug('freshness', url:, result: :fresh)
           return result_from_entry(entry, from_cache: true)
         end
 
-        debug('freshness', url: url, result: :stale) if context.entry && strategy == :freshness
+        debug('freshness', url:, result: :stale) if context.entry && strategy == :freshness
         headers = normalized_headers.merge(conditional_headers(context.validation_entry))
         network = request.call(headers)
 
-        if network.code.to_i == 304
-          return resolve_not_modified(context, network, normalized_headers, &request)
-        end
+        return resolve_not_modified(context, network, normalized_headers, &request) if network.code.to_i == 304
 
         resolve_network_response(context, network, normalized_headers)
       end
@@ -91,8 +91,8 @@ module Medusa
         key = store_key(url, request_headers, partition)
         bucket = read_bucket(key, url)
         unless bucket
-          debug('lookup', url: url, result: :absent)
-          return Context.new(url: url, key: key, entry: nil, validation_entry: nil)
+          debug('lookup', url:, result: :absent)
+          return Context.new(url:, key:, entry: nil, validation_entry: nil)
         end
 
         variants = bucket['variants']
@@ -106,16 +106,16 @@ module Medusa
         end
 
         if entry
-          debug('lookup', url: url, result: :matched)
+          debug('lookup', url:, result: :matched)
         elsif validation_entry
-          debug('lookup', url: url, result: :validation_candidate)
+          debug('lookup', url:, result: :validation_candidate)
         else
-          debug('lookup', url: url, result: :variant_mismatch)
+          debug('lookup', url:, result: :variant_mismatch)
         end
 
         Context.new(
-          url: url,
-          key: key,
+          url:,
+          key:,
           entry: snapshot(entry),
           validation_entry: snapshot(validation_entry)
         )
@@ -166,12 +166,12 @@ module Medusa
         debug('revalidate', url: context.url, result: :not_modified)
 
         Result.new(
-          entry['body'],
-          entry['headers'].dup,
-          network.response_time,
-          entry['status'].to_i,
-          nil,
-          true
+          body: entry['body'],
+          headers: entry['headers'].dup,
+          response_time: network.response_time,
+          code: entry['status'].to_i,
+          redirect_to: nil,
+          from_cache: true
         )
       end
 
@@ -186,12 +186,12 @@ module Medusa
         end
 
         Result.new(
-          network.body,
-          network.headers,
-          network.response_time,
-          network.code.to_i,
-          network.redirect_to,
-          false
+          body: network.body,
+          headers: network.headers,
+          response_time: network.response_time,
+          code: network.code.to_i,
+          redirect_to: network.redirect_to,
+          from_cache: false
         )
       end
 
@@ -221,10 +221,7 @@ module Medusa
         :no_freshness_or_validator
       end
 
-      def invalidate_old_entry?(network)
-        code = network.code.to_i
-        code < 500
-      end
+      def invalidate_old_entry?(network) = network.code.to_i < 500
 
       def build_entry(result, request_headers)
         headers = stored_headers(result.headers)
@@ -284,33 +281,29 @@ module Medusa
         return nil if value.nil?
         return value if valid_bucket?(value)
 
-        warn_log('corrupt_entry', url: url)
+        warn_log('corrupt_entry', url:)
         delete_store(key, url)
         nil
       rescue StandardError => error
-        warn_log('storage_error', url: url, operation: :read, error: error.class.name)
+        warn_log('storage_error', url:, operation: :read, error: error.class.name)
         nil
       end
 
       def write_store(key, value, url)
         @store[key] = value
       rescue StandardError => error
-        warn_log('storage_error', url: url, operation: :write, error: error.class.name)
+        warn_log('storage_error', url:, operation: :write, error: error.class.name)
       end
 
       def delete_store(key, url)
         @store.delete(key)
       rescue StandardError => error
-        warn_log('storage_error', url: url, operation: :delete, error: error.class.name)
+        warn_log('storage_error', url:, operation: :delete, error: error.class.name)
       end
 
-      def valid_bucket?(value)
-        value.is_a?(Hash) && value['version'] == VERSION && value['variants'].is_a?(Array)
-      end
+      def valid_bucket?(value) = value.is_a?(Hash) && value['version'] == VERSION && value['variants'].is_a?(Array)
 
-      def empty_bucket
-        {'version' => VERSION, 'variants' => []}
-      end
+      def empty_bucket = {'version' => VERSION, 'variants' => []}
 
       def usable_entry?(entry)
         entry.is_a?(Hash) && entry['body'].is_a?(String) && entry['headers'].is_a?(Hash) && entry['status']
@@ -345,9 +338,7 @@ module Medusa
           (left['vary_values'] || {}) == (right['vary_values'] || {})
       end
 
-      def vary_star?(entry)
-        Array(entry['vary']).include?('*')
-      end
+      def vary_star?(entry) = Array(entry['vary']).include?('*')
 
       def vary_headers(headers)
         value = headers['vary']
@@ -372,9 +363,7 @@ module Medusa
         result
       end
 
-      def strip_conditional_headers(headers)
-        headers.reject { |name, _| %w[if-none-match if-modified-since].include?(name) }
-      end
+      def strip_conditional_headers(headers) = headers.except(*CONDITIONAL_HEADERS)
 
       def merge_revalidation_headers(stored, received)
         result = normalize_headers(stored)
@@ -385,15 +374,9 @@ module Medusa
         stored_headers(result)
       end
 
-      def stored_headers(headers)
-        normalize_headers(headers).reject { |name, _| STORED_HEADER_EXCLUSIONS.include?(name) }
-      end
+      def stored_headers(headers) = normalize_headers(headers).except(*STORED_HEADER_EXCLUSIONS)
 
-      def normalize_headers(headers)
-        headers.each_with_object({}) do |(name, value), normalized|
-          normalized[name.to_s.downcase] = value
-        end
-      end
+      def normalize_headers(headers) = headers.to_h.transform_keys { |name| name.to_s.downcase }
 
       def store_key(url, request_headers, partition)
         sensitive = SENSITIVE_HEADERS.map { |name| request_headers[name].to_s }.join("\0")
@@ -443,9 +426,7 @@ module Medusa
         nil
       end
 
-      def cache_control(headers)
-        parse_directives(normalize_headers(headers)['cache-control'])
-      end
+      def cache_control(headers) = parse_directives(normalize_headers(headers)['cache-control'])
 
       def parse_directives(value)
         return {} if value.nil? || value.empty?
@@ -459,16 +440,19 @@ module Medusa
       end
 
       def result_from_entry(entry, from_cache:)
-        Result.new(entry['body'].dup, entry['headers'].dup, nil, entry['status'].to_i, nil, from_cache)
+        Result.new(
+          body: entry['body'].dup,
+          headers: entry['headers'].dup,
+          response_time: nil,
+          code: entry['status'].to_i,
+          redirect_to: nil,
+          from_cache:
+        )
       end
 
-      def debug(event, fields = {})
-        log(:debug, event, fields)
-      end
+      def debug(event, fields = {}) = log(:debug, event, fields)
 
-      def warn_log(event, fields = {})
-        log(:warn, event, fields)
-      end
+      def warn_log(event, fields = {}) = log(:warn, event, fields)
 
       def log(level, event, fields)
         return unless @logger&.respond_to?(level)
