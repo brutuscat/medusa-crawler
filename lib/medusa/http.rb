@@ -1,4 +1,3 @@
-require 'rubygems'
 require 'open-uri'
 require 'medusa/page'
 require 'medusa/cookie_store'
@@ -23,9 +22,7 @@ module Medusa
     # Fetch a single Page from the response of an HTTP request to *url*.
     # Just gets the final destination page.
     #
-    def fetch_page(url, referer = nil, depth = nil)
-      fetch_pages(url, referer, depth).last
-    end
+    def fetch_page(url, referer = nil, depth = nil) = fetch_pages(url, referer, depth).last
 
     #
     # Create new Pages from the response of an HTTP request to *url*,
@@ -43,7 +40,7 @@ module Medusa
                                     :depth => depth,
                                     :redirect_to => redirect_to,
                                     :response_time => response_time)
-          @cache.decorate(page, from_cache: from_cache) if @cache
+          @cache.decorate(page, from_cache:) if @cache
           pages << page
         end
 
@@ -58,67 +55,49 @@ module Medusa
     #
     # The maximum number of redirects to follow
     #
-    def redirect_limit
-      @opts[:redirect_limit] || REDIRECT_LIMIT
-    end
+    def redirect_limit = @opts[:redirect_limit] || REDIRECT_LIMIT
 
     #
     # The user-agent string which will be sent with each request,
     # or nil if no such option is set
     #
-    def user_agent
-      @opts[:user_agent]
-    end
+    def user_agent = @opts[:user_agent]
 
     #
     # Does this HTTP client accept cookies from the server?
     #
-    def accept_cookies?
-      @opts[:accept_cookies]
-    end
+    def accept_cookies? = @opts[:accept_cookies]
 
     #
     # The http authentication options as in http://www.ruby-doc.org/stdlib/libdoc/open-uri/rdoc/OpenURI/OpenRead.html
     # userinfo is deprecated [RFC3986]
     #
-    def http_basic_authentication
-      @opts[:http_basic_authentication]
-    end
+    def http_basic_authentication = @opts[:http_basic_authentication]
 
     #
     # The proxy authentication options as in http://www.ruby-doc.org/stdlib/libdoc/open-uri/rdoc/OpenURI/OpenRead.html
     #
-    def proxy_http_basic_authentication
-      @opts[:proxy_http_basic_authentication]
-    end
+    def proxy_http_basic_authentication = @opts[:proxy_http_basic_authentication]
 
     #
     # The proxy options as in http://www.ruby-doc.org/stdlib/libdoc/open-uri/rdoc/OpenURI/OpenRead.html
     #
-    def proxy
-      @opts[:proxy]
-    end
+    def proxy = @opts[:proxy]
 
     #
     # The proxy address string
     #
-    def proxy_host
-      @opts[:proxy_host]
-    end
+    def proxy_host = @opts[:proxy_host]
 
     #
     # The proxy port number
     #
-    def proxy_port
-      @opts[:proxy_port]
-    end
+    def proxy_port = @opts[:proxy_port]
 
     #
     # HTTP read timeout in seconds
     #
-    def read_timeout
-      @opts[:read_timeout]
-    end
+    def read_timeout = @opts[:read_timeout]
 
     private
 
@@ -180,14 +159,10 @@ module Medusa
       resource = nil
 
       begin
-        start = Time.now()
+        start = Time.now
 
         begin
-          if Gem::Requirement.new('< 2.5').satisfied_by?(Gem::Version.new(RUBY_VERSION))
-            resource = open(url, opts)
-          else
-            resource = URI.open(url, opts)
-          end
+          resource = URI.open(url, opts)
         rescue OpenURI::HTTPRedirect => e_redirect
           resource = e_redirect.io
           redirect_to = e_redirect.uri
@@ -195,17 +170,17 @@ module Medusa
           resource = e_http.io
         end
 
-        finish = Time.now()
+        finish = Time.now
         response_time = ((finish - start) * 1000).round
         @cookie_store.merge!(resource.meta['set-cookie']) if accept_cookies?
 
         Cache::Result.new(
-          resource.read,
-          resource.meta,
-          response_time,
-          resource.status.shift.to_i,
-          redirect_to,
-          false
+          body: resource.read,
+          headers: resource.meta,
+          response_time:,
+          code: resource.status.shift.to_i,
+          redirect_to:,
+          from_cache: false
         )
       rescue Timeout::Error, EOFError, Errno::ECONNREFUSED, Errno::ETIMEDOUT, Errno::ECONNRESET
         retries += 1
@@ -220,8 +195,6 @@ module Medusa
     #
     # Allowed to connect to the requested url?
     #
-    def allowed?(to_url, from_url)
-      to_url.host.nil? || (to_url.host == from_url.host)
-    end
+    def allowed?(to_url, from_url) = to_url.host.nil? || (to_url.host == from_url.host)
   end
 end
