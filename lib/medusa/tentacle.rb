@@ -6,10 +6,10 @@ module Medusa
     #
     # Create a new Tentacle
     #
-    def initialize(link_queue, page_queue, opts = {})
+    def initialize(link_queue, page_queue, opts = {}, http_cache: nil)
       @link_queue = link_queue
       @page_queue = page_queue
-      @http = Medusa::HTTP.new(opts)
+      @http = Medusa::HTTP.new(opts, cache: http_cache)
       @opts = opts
     end
 
