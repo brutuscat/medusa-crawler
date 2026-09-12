@@ -111,16 +111,16 @@ module Medusa
     it 'keeps Vary variants distinct' do
       cache = described_class.new(store: store, strategy: :freshness)
 
-      cache.fetch(url, 'Accept-Language' => 'en') do
+      cache.fetch(url, {'Accept-Language' => 'en'}) do
         response(body: 'English', headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language'})
       end
 
-      cache.fetch(url, 'Accept-Language' => 'es') do
+      cache.fetch(url, {'Accept-Language' => 'es'}) do
         response(body: 'Español', headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language'})
       end
 
-      english = cache.fetch(url, 'Accept-Language' => 'en') { raise 'expected English cache hit' }
-      spanish = cache.fetch(url, 'Accept-Language' => 'es') { raise 'expected Spanish cache hit' }
+      english = cache.fetch(url, {'Accept-Language' => 'en'}) { raise 'expected English cache hit' }
+      spanish = cache.fetch(url, {'Accept-Language' => 'es'}) { raise 'expected Spanish cache hit' }
 
       expect(english.body).to eq('English')
       expect(spanish.body).to eq('Español')
