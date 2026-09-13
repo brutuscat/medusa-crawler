@@ -69,6 +69,18 @@ module Medusa
       expect(index.lookup(url, headers).entry.body).to eq('second')
     end
 
+    it 'does not let a stale revalidation replace a newer snapshot' do
+      initial = index.lookup(url, headers)
+      index.write(initial, entry(body: 'first'))
+      stale_match = index.lookup(url, headers)
+      current_match = index.lookup(url, headers)
+
+      index.write(current_match, entry(body: 'second'))
+      index.write(stale_match, entry(body: 'stale'), replacing: stale_match.entry)
+
+      expect(index.lookup(url, headers).entry.body).to eq('second')
+    end
+
     it 'deletes an existing variant' do
       match = index.lookup(url, headers)
       index.write(match, entry)
@@ -77,6 +89,18 @@ module Medusa
       index.delete(existing)
 
       expect(index.lookup(url, headers).entry).to be_nil
+    end
+
+    it 'does not let a stale revalidation delete a newer snapshot' do
+      initial = index.lookup(url, headers)
+      index.write(initial, entry(body: 'first'))
+      stale_match = index.lookup(url, headers)
+      current_match = index.lookup(url, headers)
+
+      index.write(current_match, entry(body: 'second'))
+      index.delete(stale_match, stale_match.entry)
+
+      expect(index.lookup(url, headers).entry.body).to eq('second')
     end
   end
 end

@@ -16,6 +16,25 @@ module Medusa
       expect(crawl.pages[page.url].from_cache?).to be(false)
     end
 
+    it 'keeps the pre-2.0 Tentacle constructor and shares one cache across workers' do
+      page = FakePage.new('shared-cache')
+      worker_caches = Queue.new
+
+      expect(Tentacle.instance_method(:initialize).parameters).to eq(
+        [[:req, :link_queue], [:req, :page_queue], [:opt, :opts]]
+      )
+      allow(Tentacle).to receive(:new).and_wrap_original do |constructor, *arguments|
+        worker_caches << arguments.fetch(2).fetch(:http_cache)
+        constructor.call(*arguments)
+      end
+
+      Medusa.crawl(page.url, http_cache: true, threads: 2)
+
+      caches = 2.times.map { worker_caches.pop }
+      expect(caches).to all(be_a(HTTP::Cache))
+      expect(caches.uniq.size).to eq(1)
+    end
+
     RSpec.shared_examples_for "crawl" do
       it "should crawl all the html pages in a domain by following <a> href's" do
         pages = []

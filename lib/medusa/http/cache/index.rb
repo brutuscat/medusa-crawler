@@ -7,8 +7,6 @@ module Medusa
       # storage only needs to implement [], []=, and delete.
       class Index
         VERSION = 1
-        SENSITIVE_HEADERS = %w[authorization cookie].freeze
-
         Match = Data.define(:url, :key, :entry, :validation_entry)
 
         def initialize(storage:, &on_error)
@@ -36,9 +34,10 @@ module Medusa
         def write(match, entry, replacing: match.entry)
           @mutex.synchronize do
             entries = read_unlocked(match.key, match.url) || []
-            index = replacing && entries.index { |candidate| candidate.same_variant?(replacing) }
+            if replacing
+              index = entries.index(replacing)
+              return false unless index
 
-            if index
               entries[index] = entry
             else
               entries.reject! { |candidate| candidate.same_variant?(entry) }
@@ -56,7 +55,10 @@ module Medusa
             entries = read_unlocked(match.key, match.url)
             return unless entries
 
-            entries.reject! { |candidate| candidate.same_variant?(entry) }
+            index = entries.index(entry)
+            return false unless index
+
+            entries.delete_at(index)
             entries.empty? ? delete_bucket(match.key, match.url) : write_bucket(match.key, entries, match.url)
           end
         end
@@ -64,7 +66,10 @@ module Medusa
         private
 
         def key_for(url, request_headers, partition)
-          sensitive = SENSITIVE_HEADERS.map { |name| request_headers[name].to_s }.join("\0")
+          request_headers = Entry.normalize_headers(request_headers)
+          sensitive = Entry::SENSITIVE_HEADERS.map do |name|
+            Entry.selector_value(name, request_headers[name]).to_s
+          end.join("\0")
           digest = Digest::SHA256.hexdigest("#{url}\0#{sensitive}\0#{partition.inspect}")
           "medusa:http-cache:v#{VERSION}:#{digest}"
         end

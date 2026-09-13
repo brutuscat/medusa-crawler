@@ -12,10 +12,10 @@ module Medusa
     # CookieStore for this HTTP client
     attr_reader :cookie_store
 
-    def initialize(opts = {}, cache: nil, **keyword_opts)
-      @opts = keyword_opts.empty? ? opts : opts.merge(keyword_opts)
+    def initialize(opts = {})
+      @opts = opts
       @cookie_store = CookieStore.new(@opts[:cookies])
-      @cache = cache
+      @cache = cache_from(@opts[:http_cache])
     end
 
     #
@@ -100,6 +100,17 @@ module Medusa
     def read_timeout = @opts[:read_timeout]
 
     private
+
+    def cache_from(value)
+      case value
+      when Cache
+        value
+      when Hash
+        Cache.new(**value, logger: @opts[:logger])
+      when true
+        Cache.new(logger: @opts[:logger])
+      end
+    end
 
     #
     # Retrieve HTTP responses for *url*, including redirects.

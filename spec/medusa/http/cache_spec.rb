@@ -126,6 +126,27 @@ module Medusa
       expect(spanish.body).to eq('Español')
     end
 
+    it 'matches sensitive Vary selectors without persisting their values' do
+      cache = described_class.new(storage:, strategy: :freshness)
+      request_headers = {
+        'Authorization' => 'Bearer private-token',
+        'Cookie' => 'session=private-cookie'
+      }
+
+      cache.fetch(url, request_headers) do
+        response(
+          body: 'private',
+          headers: {'cache-control' => 'max-age=60', 'vary' => 'Authorization, Cookie'}
+        )
+      end
+
+      hit = cache.fetch(url, request_headers) { raise 'expected cache hit' }
+      persisted = storage.inspect
+
+      expect(hit.body).to eq('private')
+      expect(persisted).not_to include('private-token', 'private-cookie')
+    end
+
     it 'stores Vary: * but never uses it as a freshness match' do
       cache = described_class.new(storage:, strategy: :freshness)
 
@@ -202,6 +223,41 @@ module Medusa
       expect(second.from_cache).to be(true)
       expect(second.body).to eq('snapshot')
       expect(storage).not_to be_empty
+    end
+
+    it 'does not let a delayed revalidation overwrite a newer response' do
+      cache = described_class.new(storage:, strategy: :revalidation)
+      cache.fetch(url) { response(body: 'version one', headers: {'etag' => '"v1"'}) }
+      requests = Queue.new
+      release_newer = Queue.new
+      release_stale = Queue.new
+
+      newer = Thread.new do
+        cache.fetch(url) do |headers|
+          requests << headers
+          release_newer.pop
+          response(body: 'version two', headers: {'etag' => '"v2"'})
+        end
+      end
+      stale = Thread.new do
+        cache.fetch(url) do |headers|
+          requests << headers
+          release_stale.pop
+          response(code: 304, headers: {'etag' => '"v1"'})
+        end
+      end
+
+      2.times { expect(requests.pop['if-none-match']).to eq('"v1"') }
+      release_newer << true
+      newer.value
+      release_stale << true
+      stale.value
+
+      current = cache.fetch(url) do |headers|
+        expect(headers['if-none-match']).to eq('"v2"')
+        response(code: 304, headers: {'etag' => '"v2"'})
+      end
+      expect(current.body).to eq('version two')
     end
 
     it 'retries an unexpected 304 once without conditional headers when no representation exists' do

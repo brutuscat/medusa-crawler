@@ -1,3 +1,4 @@
+require 'digest'
 require 'time'
 
 module Medusa
@@ -5,6 +6,7 @@ module Medusa
     class Cache
       Entry = Data.define(:status, :headers, :body, :vary, :vary_values, :stored_at) do
         CACHEABLE_STATUS = 200
+        SENSITIVE_HEADERS = %w[authorization cookie].freeze
         CONNECTION_HEADERS = %w[
           connection keep-alive proxy-connection te trailer transfer-encoding upgrade
         ].freeze
@@ -81,7 +83,15 @@ module Medusa
             return {}.freeze if vary.include?('*')
 
             normalized = normalize_headers(request_headers)
-            vary.to_h { |name| [name, immutable_optional_string(normalized[name])] }.freeze
+            vary.to_h { |name| [name, selector_value(name, normalized[name])] }.freeze
+          end
+
+          def selector_value(name, value)
+            value = immutable_optional_string(value)
+            return unless value
+            return value unless SENSITIVE_HEADERS.include?(name)
+
+            Digest::SHA256.hexdigest(value).freeze
           end
 
           def cache_directives(value)
@@ -151,7 +161,7 @@ module Medusa
           return true if vary.empty?
 
           normalized = self.class.normalize_headers(request_headers)
-          vary.all? { |name| vary_values[name] == normalized[name] }
+          vary.all? { |name| vary_values[name] == self.class.selector_value(name, normalized[name]) }
         end
 
         def same_variant?(other) = other && vary == other.vary && vary_values == other.vary_values

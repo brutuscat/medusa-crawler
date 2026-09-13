@@ -6,6 +6,39 @@ require 'fakeweb_helper'
 module Medusa
   RSpec.describe HTTP do
 
+    describe '.new' do
+      it 'keeps the pre-2.0 positional options API' do
+        expect(described_class.instance_method(:initialize).parameters).to eq([[:opt, :opts]])
+
+        options = {user_agent: 'legacy crawler', redirect_limit: 2}
+        http = described_class.new(options)
+
+        expect(http.user_agent).to eq('legacy crawler')
+        expect(http.redirect_limit).to eq(2)
+      end
+
+      it 'accepts the traditional keyword-looking options Hash' do
+        http = described_class.new(user_agent: 'legacy crawler', redirect_limit: 2)
+
+        expect(http.user_agent).to eq('legacy crawler')
+        expect(http.redirect_limit).to eq(2)
+      end
+
+      it 'accepts cache configuration through the options Hash' do
+        http = described_class.new(http_cache: {storage: {}, strategy: :freshness})
+
+        expect(http.instance_variable_get(:@cache)).to be_a(HTTP::Cache)
+        expect(http.instance_variable_get(:@cache).strategy).to eq(:freshness)
+      end
+
+      it 'uses an existing cache instance from the options Hash' do
+        cache = HTTP::Cache.new(storage: {})
+        http = described_class.new(http_cache: cache)
+
+        expect(http.instance_variable_get(:@cache)).to equal(cache)
+      end
+    end
+
     describe "fetch_page" do
       before(:each) do
         WebMock.reset!
@@ -45,7 +78,7 @@ module Medusa
           .to_return(body: '', status: 304, headers: {'ETag' => '"v1"'})
 
         cache = HTTP::Cache.new(storage:, strategy: :revalidation)
-        http = Medusa::HTTP.new(cache:)
+        http = Medusa::HTTP.new(http_cache: cache)
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 
@@ -64,7 +97,7 @@ module Medusa
                      headers: {'Content-Type' => 'text/plain', 'Cache-Control' => 'private, max-age=60'})
 
         cache = HTTP::Cache.new(storage: {}, strategy: :freshness)
-        http = Medusa::HTTP.new(cache:)
+        http = Medusa::HTTP.new(http_cache: cache)
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 

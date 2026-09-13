@@ -82,9 +82,6 @@ module Medusa
       @after_crawl_blocks = []
       @opts = opts
       @focus_crawl_block = nil
-      @http_cache = nil
-
-
       yield self if block_given?
     end
 
@@ -161,7 +158,7 @@ module Medusa
       page_queue = Queue.new
 
       @opts[:threads].times do
-        @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts.dup, http_cache: @http_cache).run }
+        @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts.dup).run }
       end
 
       @urls.each{ |url| link_queue.enq(url) }
@@ -207,9 +204,9 @@ module Medusa
       @pages = PageStore.new(storage)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
       cache_options = @opts[:http_cache]
-      if cache_options
+      if cache_options && !cache_options.is_a?(HTTP::Cache)
         cache_options = {} if cache_options == true
-        @http_cache = HTTP::Cache.new(**cache_options, logger: @opts[:logger])
+        @opts[:http_cache] = HTTP::Cache.new(**cache_options, logger: @opts[:logger])
       end
 
       freeze_options
@@ -221,7 +218,7 @@ module Medusa
     # mutable; the options hash itself is still frozen.
     #
     def freeze_options
-      @opts.except(:logger).each_value(&:freeze)
+      @opts.except(:logger, :http_cache).each_value(&:freeze)
       @opts[:cookies]&.each_key { @opts[:cookies][_1].freeze }
       @opts.freeze
     end
