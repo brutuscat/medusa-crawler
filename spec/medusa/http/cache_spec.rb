@@ -12,6 +12,33 @@ module Medusa
       result_class.new(body, headers, response_time, code, nil, false)
     end
 
+    describe '.from' do
+      it 'disables caching for nil or false' do
+        expect(described_class.from(nil)).to be_nil
+        expect(described_class.from(false)).to be_nil
+      end
+
+      it 'creates the default cache for true' do
+        expect(described_class.from(true)).to be_a(described_class)
+      end
+
+      it 'creates a configured cache from a Hash' do
+        cache = described_class.from({storage: {}, strategy: :freshness})
+
+        expect(cache.strategy).to eq(:freshness)
+      end
+
+      it 'returns an existing cache unchanged' do
+        cache = described_class.new(storage: {})
+
+        expect(described_class.from(cache)).to equal(cache)
+      end
+
+      it 'rejects unsupported configuration' do
+        expect { described_class.from(Object.new) }.to raise_error(ArgumentError, /http_cache/)
+      end
+    end
+
     it 'revalidates an ETag and reuses the stored representation after 304' do
       cache = described_class.new(storage:, strategy: :revalidation)
 
@@ -182,6 +209,30 @@ module Medusa
       expect(second.body).to eq('body')
     end
 
+    it 'deletes the validation source when a 304 response sets a cookie' do
+      cache = described_class.new(storage:, strategy: :freshness)
+
+      cache.fetch(url, {'Accept-Language' => 'en'}) do
+        response(
+          body: 'English',
+          headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language', 'etag' => '"en"'}
+        )
+      end
+
+      spanish = cache.fetch(url, {'Accept-Language' => 'es'}) do |headers|
+        expect(headers['if-none-match']).to eq('"en"')
+        response(code: 304, headers: {'etag' => '"en"', 'set-cookie' => 'session=secret'})
+      end
+
+      expect(spanish.body).to eq('English')
+      expect(storage).to be_empty
+
+      cache.fetch(url, {'Accept-Language' => 'en'}) do |headers|
+        expect(headers).not_to have_key('if-none-match')
+        response(body: 'new response', headers: {'cache-control' => 'max-age=60'})
+      end
+    end
+
     it 'can validate a stored response that does not match the current Vary selectors' do
       cache = described_class.new(storage:, strategy: :freshness)
 
@@ -222,7 +273,7 @@ module Medusa
 
       expect(second.from_cache).to be(true)
       expect(second.body).to eq('snapshot')
-      expect(storage).not_to be_empty
+      expect(storage).to be_empty
     end
 
     it 'does not let a delayed revalidation overwrite a newer response' do
@@ -258,6 +309,41 @@ module Medusa
         response(code: 304, headers: {'etag' => '"v2"'})
       end
       expect(current.body).to eq('version two')
+    end
+
+    it 'does not let a delayed 304 restore a response deleted by no-store' do
+      cache = described_class.new(storage:, strategy: :revalidation)
+      cache.fetch(url) { response(body: 'version one', headers: {'etag' => '"v1"'}) }
+      requests = Queue.new
+      release_no_store = Queue.new
+      release_stale = Queue.new
+
+      no_store = Thread.new do
+        cache.fetch(url) do |headers|
+          requests << headers
+          release_no_store.pop
+          response(body: 'uncacheable', headers: {'cache-control' => 'no-store'})
+        end
+      end
+      stale = Thread.new do
+        cache.fetch(url) do |headers|
+          requests << headers
+          release_stale.pop
+          response(code: 304, headers: {'etag' => '"v1"'})
+        end
+      end
+
+      2.times { expect(requests.pop['if-none-match']).to eq('"v1"') }
+      release_no_store << true
+      no_store.value
+      release_stale << true
+      stale.value
+
+      expect(storage).to be_empty
+      cache.fetch(url) do |headers|
+        expect(headers).not_to have_key('if-none-match')
+        response(body: 'version three', headers: {'etag' => '"v3"'})
+      end
     end
 
     it 'retries an unexpected 304 once without conditional headers when no representation exists' do

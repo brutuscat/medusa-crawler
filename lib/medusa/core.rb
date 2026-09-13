@@ -203,11 +203,8 @@ module Medusa
       storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
-      cache_options = @opts[:http_cache]
-      if cache_options && !cache_options.is_a?(HTTP::Cache)
-        cache_options = {} if cache_options == true
-        @opts[:http_cache] = HTTP::Cache.new(**cache_options, logger: @opts[:logger])
-      end
+      cache = HTTP::Cache.from(@opts[:http_cache], logger: @opts[:logger])
+      @opts[:http_cache] = cache if cache
 
       freeze_options
     end

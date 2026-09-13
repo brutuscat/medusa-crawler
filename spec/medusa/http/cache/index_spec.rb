@@ -63,6 +63,10 @@ module Medusa
       match = index.lookup(url, headers)
       index.write(match, entry(body: 'first'))
       existing = index.lookup(url, headers)
+      same_snapshot = index.lookup(url, headers)
+
+      expect(existing.entry).to eq(same_snapshot.entry)
+      expect(existing.entry).not_to equal(same_snapshot.entry)
 
       index.write(existing, entry(body: 'second'))
 

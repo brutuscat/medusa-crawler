@@ -1,4 +1,5 @@
 require 'digest'
+require 'medusa/http/cache/request_selector'
 
 module Medusa
   class HTTP
@@ -34,19 +35,8 @@ module Medusa
         def write(match, entry, replacing: match.entry)
           @mutex.synchronize do
             entries = read_unlocked(match.key, match.url) || []
-            if replacing
-              index = entries.index(replacing)
-              if index
-                entries[index] = entry
-              elsif entries.empty?
-                entries << entry
-              else
-                return false
-              end
-            else
-              entries.reject! { |candidate| candidate.same_variant?(entry) }
-              entries << entry
-            end
+            updated = replacing ? replace_snapshot(entries, replacing, entry) : store_variant(entries, entry)
+            return false unless updated
 
             write_bucket(match.key, entries, match.url)
           end
@@ -69,11 +59,22 @@ module Medusa
 
         private
 
+        def replace_snapshot(entries, snapshot, replacement)
+          index = entries.index(snapshot)
+          return false unless index
+
+          entries[index] = replacement
+          true
+        end
+
+        def store_variant(entries, entry)
+          entries.reject! { |candidate| candidate.same_variant?(entry) }
+          entries << entry
+          true
+        end
+
         def key_for(url, request_headers, partition)
-          request_headers = Entry.normalize_headers(request_headers)
-          sensitive = SENSITIVE_REQUEST_HEADERS.map do |name|
-            Entry.selector_value(name, request_headers[name]).to_s
-          end.join("\0")
+          sensitive = RequestSelector.sensitive_fingerprint(request_headers)
           digest = Digest::SHA256.hexdigest("#{url}\0#{sensitive}\0#{partition.inspect}")
           "medusa:http-cache:v#{VERSION}:#{digest}"
         end

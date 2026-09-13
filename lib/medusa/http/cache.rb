@@ -1,5 +1,6 @@
 require 'uri'
 require 'medusa/storage'
+require 'medusa/http/cache/request_selector'
 require 'medusa/http/cache/entry'
 require 'medusa/http/cache/index'
 
@@ -12,6 +13,21 @@ module Medusa
       Result = Data.define(:body, :headers, :response_time, :code, :redirect_to, :from_cache)
 
       attr_reader :strategy
+
+      def self.from(value, logger: nil)
+        case value
+        when nil, false
+          nil
+        when true
+          new(logger:)
+        when Hash
+          new(**value, logger:)
+        when self
+          value
+        else
+          raise ArgumentError, 'http_cache must be true, false, nil, a Hash, or an HTTP::Cache'
+        end
+      end
 
       def initialize(storage: nil, strategy: :revalidation, logger: nil)
         strategy = strategy.to_sym
@@ -27,7 +43,7 @@ module Medusa
 
       # Wrap one HTTP GET. The block receives request headers and must return a Result.
       def fetch(url, request_headers = {}, partition: nil, &request)
-        request_headers = Entry.normalize_headers(request_headers)
+        request_headers = RequestSelector.normalize(request_headers)
         match = @index.lookup(url, request_headers, partition:)
 
         if strategy == :freshness && match.entry&.fresh?
@@ -56,7 +72,10 @@ module Medusa
         end
 
         entry = source.revalidate(response.headers, request_headers)
-        if entry.no_store?
+        if sets_cookie?(response)
+          @index.delete(match, source)
+          debug('bypass', url:, reason: :set_cookie)
+        elsif entry.no_store?
           @index.delete(match, source)
           debug('bypass', url:, reason: :no_store)
         else
@@ -69,7 +88,10 @@ module Medusa
 
       def resolve_response(url, match, response, request_headers)
         entry = Entry.from(response, request_headers)
-        if entry.cacheable?(strategy)
+        if sets_cookie?(response)
+          @index.delete(match) if match.entry && response.code.to_i < 500
+          debug('bypass', url:, reason: :set_cookie)
+        elsif entry.cacheable?(strategy)
           @index.write(match, entry)
           event = match.entry ? 'revalidate' : 'store'
           debug(event, url:, result: (match.entry ? :modified : :stored))
@@ -87,6 +109,10 @@ module Medusa
         return :no_validator if strategy == :revalidation
 
         :no_freshness_or_validator
+      end
+
+      def sets_cookie?(response)
+        response.headers.to_h.any? { |name, _value| name.to_s.casecmp?('set-cookie') }
       end
 
       def cached_result(entry, response_time: nil)

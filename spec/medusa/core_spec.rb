@@ -35,6 +35,54 @@ module Medusa
       expect(caches.uniq.size).to eq(1)
     end
 
+    it 'does not reuse a response that establishes a cookie across crawls' do
+      storage = {}
+      login_url = URI(SPEC_DOMAIN).merge('/cached-login').to_s
+      private_url = URI(SPEC_DOMAIN).merge('/private').to_s
+      login = stub_request(:get, login_url)
+        .to_return(
+          body: '<a href="/private">Private</a>',
+          headers: {
+            'Content-Type' => 'text/html',
+            'Cache-Control' => 'max-age=60',
+            'Set-Cookie' => 'session=first; Path=/'
+          }
+        )
+        .then
+        .to_return(
+          body: '<a href="/private">Private</a>',
+          headers: {
+            'Content-Type' => 'text/html',
+            'Cache-Control' => 'max-age=60',
+            'Set-Cookie' => 'session=second; Path=/'
+          }
+        )
+      first_private = stub_request(:get, private_url)
+        .with(headers: {'Cookie' => 'session=first'})
+        .to_return(body: 'first session', headers: {'Cache-Control' => 'no-store'})
+      second_private = stub_request(:get, private_url)
+        .with(headers: {'Cookie' => 'session=second'})
+        .to_return(body: 'second session', headers: {'Cache-Control' => 'no-store'})
+      options = {
+        accept_cookies: true,
+        threads: 1,
+        http_cache: {storage:, strategy: :freshness}
+      }
+
+      Medusa.crawl(login_url, options)
+      Medusa.crawl(login_url, options)
+
+      expect(login).to have_been_requested.twice
+      expect(first_private).to have_been_requested.once
+      expect(second_private).to have_been_requested.once
+    end
+
+    it 'rejects the same unsupported cache configuration as HTTP' do
+      page = FakePage.new('invalid-cache')
+
+      expect { Medusa.crawl(page.url, http_cache: Object.new) }.to raise_error(ArgumentError, /http_cache/)
+    end
+
     RSpec.shared_examples_for "crawl" do
       it "should crawl all the html pages in a domain by following <a> href's" do
         pages = []

@@ -37,6 +37,10 @@ module Medusa
 
         expect(http.instance_variable_get(:@cache)).to equal(cache)
       end
+
+      it 'rejects unsupported cache configuration' do
+        expect { described_class.new(http_cache: Object.new) }.to raise_error(ArgumentError, /http_cache/)
+      end
     end
 
     describe "fetch_page" do

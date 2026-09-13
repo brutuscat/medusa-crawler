@@ -1,11 +1,9 @@
-require 'digest'
 require 'time'
+require 'medusa/http/cache/request_selector'
 
 module Medusa
   class HTTP
     class Cache
-      SENSITIVE_REQUEST_HEADERS = %w[authorization cookie].freeze
-
       Entry = Data.define(:status, :headers, :body, :vary, :vary_values, :stored_at) do
         CACHEABLE_STATUS = 200
         CONNECTION_HEADERS = %w[
@@ -81,18 +79,7 @@ module Medusa
           end
 
           def vary_values(vary, request_headers)
-            return {}.freeze if vary.include?('*')
-
-            normalized = normalize_headers(request_headers)
-            vary.to_h { |name| [name, selector_value(name, normalized[name])] }.freeze
-          end
-
-          def selector_value(name, value)
-            value = immutable_optional_string(value)
-            return unless value
-            return value unless SENSITIVE_REQUEST_HEADERS.include?(name)
-
-            Digest::SHA256.hexdigest(value).freeze
+            RequestSelector.values(vary, request_headers)
           end
 
           def cache_directives(value)
@@ -158,11 +145,7 @@ module Medusa
         def response_headers = mutable_headers
 
         def matches?(request_headers)
-          return false if vary_star?
-          return true if vary.empty?
-
-          normalized = self.class.normalize_headers(request_headers)
-          vary.all? { |name| vary_values[name] == self.class.selector_value(name, normalized[name]) }
+          RequestSelector.matches?(vary, vary_values, request_headers)
         end
 
         def same_variant?(other) = other && vary == other.vary && vary_values == other.vary_values

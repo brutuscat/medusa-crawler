@@ -15,7 +15,7 @@ module Medusa
     def initialize(opts = {})
       @opts = opts
       @cookie_store = CookieStore.new(@opts[:cookies])
-      @cache = cache_from(@opts[:http_cache])
+      @cache = Cache.from(@opts[:http_cache], logger: @opts[:logger])
     end
 
     #
@@ -101,18 +101,6 @@ module Medusa
 
     private
 
-    def cache_from(value)
-      case value
-      when Cache
-        value
-      when Hash
-        Cache.new(**value, logger: @opts[:logger])
-      when true
-        Cache.new(logger: @opts[:logger])
-      end
-    end
-
-    #
     # Retrieve HTTP responses for *url*, including redirects.
     # Yields the response object, response code, and URI location
     # for each response.
