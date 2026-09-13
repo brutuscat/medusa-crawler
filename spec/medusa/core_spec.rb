@@ -8,6 +8,14 @@ module Medusa
       WebMock.reset!
     end
 
+    it 'constructs the default HTTP cache when enabled' do
+      page = FakePage.new('cached')
+
+      crawl = Medusa.crawl(page.url, http_cache: true)
+
+      expect(crawl.pages[page.url].from_cache?).to be(false)
+    end
+
     RSpec.shared_examples_for "crawl" do
       it "should crawl all the html pages in a domain by following <a> href's" do
         pages = []

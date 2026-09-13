@@ -15,7 +15,7 @@ module Medusa
     def initialize(opts = {}, cache: nil, **keyword_opts)
       @opts = keyword_opts.empty? ? opts : opts.merge(keyword_opts)
       @cookie_store = CookieStore.new(@opts[:cookies])
-      @cache = cache || Cache.build(@opts[:http_cache], logger: @opts[:logger])
+      @cache = cache
     end
 
     #
@@ -32,23 +32,23 @@ module Medusa
       pages = []
       begin
         url = URI(url) unless url.is_a?(URI)
-        get(url, referer) do |response, headers, code, location, redirect_to, response_time, from_cache|
-          page = Page.new(location, :body => response,
-                                    :headers => headers,
-                                    :code => code,
-                                    :referer => referer,
-                                    :depth => depth,
-                                    :redirect_to => redirect_to,
-                                    :response_time => response_time)
-          @cache.decorate(page, from_cache:) if @cache
-          pages << page
+        get(url, referer) do |body, headers, code, location, redirect_to, response_time, from_cache|
+          pages << Page.new(
+            location,
+            body:,
+            headers:,
+            code:,
+            referer:,
+            depth:,
+            redirect_to:,
+            response_time:,
+            from_cache:
+          )
         end
 
         return pages
       rescue StandardError => e
-        page = Page.new(url, error: e)
-        @cache.decorate(page, from_cache: false) if @cache
-        return pages << page
+        return pages << Page.new(url, error: e)
       end
     end
 
@@ -184,9 +184,10 @@ module Medusa
         )
       rescue Timeout::Error, EOFError, Errno::ECONNREFUSED, Errno::ETIMEDOUT, Errno::ECONNRESET
         retries += 1
+        raise if retries > RETRY_LIMIT
+
         sleep(3 ^ retries)
-        retry unless retries > RETRY_LIMIT
-        raise
+        retry
       ensure
         resource&.close unless resource&.closed?
       end

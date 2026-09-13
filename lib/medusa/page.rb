@@ -2,7 +2,6 @@ require 'cgi'
 require 'nokogiri'
 require 'ostruct'
 require 'webrick/cookie'
-require 'medusa/http/cache/page_metadata'
 
 module Medusa
   class Page
@@ -52,6 +51,7 @@ module Medusa
       @response_time = params[:response_time]
       @body = params[:body]
       @error = params[:error]
+      @from_cache = !!params[:from_cache]
 
       @fetched = !params[:code].nil?
     end
@@ -96,6 +96,9 @@ module Medusa
     # +true+ if the page was fetched with no error, +false+ otherwise.
     #
     def fetched? = @fetched
+
+    # Was this representation body supplied by the HTTP cache?
+    def from_cache? = @from_cache
 
     #
     # Array of cookies received with this page as WEBrick::Cookie objects.
@@ -163,30 +166,29 @@ module Medusa
 
     def marshal_dump
       [@url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
-       @redirect_to, @response_time, @fetched, cache_metadata_value]
+       @redirect_to, @response_time, @fetched, @from_cache]
     end
 
     def marshal_load(ary)
       @url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
         @redirect_to, @response_time, @fetched, from_cache = ary
-      restore_cache_metadata(from_cache) unless from_cache.nil?
+      @from_cache = !!from_cache
     end
 
     def to_hash
-      hash = {'url' => @url.to_s,
-              'headers' => Marshal.dump(@headers),
-              'data' => Marshal.dump(@data),
-              'body' => @body,
-              'links' => links.map(&:to_s),
-              'code' => @code,
-              'visited' => @visited,
-              'depth' => @depth,
-              'referer' => @referer.to_s,
-              'redirect_to' => @redirect_to.to_s,
-              'response_time' => @response_time,
-              'fetched' => @fetched}
-      hash['http_cache_from_cache'] = @http_cache_from_cache if instance_variable_defined?(:@http_cache_from_cache)
-      hash
+      {'url' => @url.to_s,
+       'headers' => Marshal.dump(@headers),
+       'data' => Marshal.dump(@data),
+       'body' => @body,
+       'links' => links.map(&:to_s),
+       'code' => @code,
+       'visited' => @visited,
+       'depth' => @depth,
+       'referer' => @referer.to_s,
+       'redirect_to' => @redirect_to.to_s,
+       'response_time' => @response_time,
+       'fetched' => @fetched,
+       'from_cache' => @from_cache}
     end
 
     def self.from_hash(hash)
@@ -201,23 +203,12 @@ module Medusa
        '@referer' => hash['referer'],
        '@redirect_to' => (!!hash['redirect_to'] && !hash['redirect_to'].empty?) ? URI(hash['redirect_to']) : nil,
        '@response_time' => hash['response_time'].to_i,
-       '@fetched' => hash['fetched']
+       '@fetched' => hash['fetched'],
+       '@from_cache' => !!hash['from_cache']
       }.each do |var, value|
         page.instance_variable_set(var, value)
       end
-      page.send(:restore_cache_metadata, hash['http_cache_from_cache']) if hash.key?('http_cache_from_cache')
       page
-    end
-
-    private
-
-    def cache_metadata_value
-      @http_cache_from_cache if instance_variable_defined?(:@http_cache_from_cache)
-    end
-
-    def restore_cache_metadata(from_cache)
-      @http_cache_from_cache = !!from_cache
-      extend(Medusa::HTTP::Cache::PageMetadata)
     end
   end
 end

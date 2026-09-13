@@ -17,10 +17,22 @@ module Medusa
         expect(http.fetch_page(SPEC_DOMAIN)).to be_an_instance_of(Page)
       end
 
-      it 'keeps the Page API unchanged when HTTP caching is disabled' do
+      it 'records a transient network error after retries are exhausted' do
+        url = URI(SPEC_DOMAIN).merge('/timeout')
+        http = Medusa::HTTP.new
+        allow(URI).to receive(:open).and_raise(Timeout::Error)
+        allow(http).to receive(:sleep)
+
+        page = http.fetch_page(url)
+
+        expect(page.error).to be_a(Timeout::Error)
+        expect(URI).to have_received(:open).exactly(HTTP::RETRY_LIMIT + 1).times
+      end
+
+      it 'marks an ordinary network Page as not cached' do
         page = Medusa::HTTP.new.fetch_page(FakePage.new('uncached').url)
 
-        expect(page).not_to respond_to(:from_cache?)
+        expect(page.from_cache?).to be(false)
       end
 
       it 'revalidates through OpenURI and returns the stored representation after 304' do
@@ -32,7 +44,8 @@ module Medusa
           .then
           .to_return(body: '', status: 304, headers: {'ETag' => '"v1"'})
 
-        http = Medusa::HTTP.new(http_cache: {store: store, strategy: :revalidation})
+        cache = HTTP::Cache.new(store:, strategy: :revalidation)
+        http = Medusa::HTTP.new(cache:)
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 
@@ -50,7 +63,8 @@ module Medusa
           .to_return(body: 'fresh', status: 200,
                      headers: {'Content-Type' => 'text/plain', 'Cache-Control' => 'private, max-age=60'})
 
-        http = Medusa::HTTP.new(http_cache: {store: {}, strategy: :freshness})
+        cache = HTTP::Cache.new(store: {}, strategy: :freshness)
+        http = Medusa::HTTP.new(cache:)
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 
