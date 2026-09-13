@@ -4,9 +4,10 @@ require 'time'
 module Medusa
   class HTTP
     class Cache
+      SENSITIVE_REQUEST_HEADERS = %w[authorization cookie].freeze
+
       Entry = Data.define(:status, :headers, :body, :vary, :vary_values, :stored_at) do
         CACHEABLE_STATUS = 200
-        SENSITIVE_HEADERS = %w[authorization cookie].freeze
         CONNECTION_HEADERS = %w[
           connection keep-alive proxy-connection te trailer transfer-encoding upgrade
         ].freeze
@@ -89,7 +90,7 @@ module Medusa
           def selector_value(name, value)
             value = immutable_optional_string(value)
             return unless value
-            return value unless SENSITIVE_HEADERS.include?(name)
+            return value unless SENSITIVE_REQUEST_HEADERS.include?(name)
 
             Digest::SHA256.hexdigest(value).freeze
           end

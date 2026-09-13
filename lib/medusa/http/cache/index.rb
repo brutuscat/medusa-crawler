@@ -67,7 +67,7 @@ module Medusa
 
         def key_for(url, request_headers, partition)
           request_headers = Entry.normalize_headers(request_headers)
-          sensitive = Entry::SENSITIVE_HEADERS.map do |name|
+          sensitive = SENSITIVE_REQUEST_HEADERS.map do |name|
             Entry.selector_value(name, request_headers[name]).to_s
           end.join("\0")
           digest = Digest::SHA256.hexdigest("#{url}\0#{sensitive}\0#{partition.inspect}")
