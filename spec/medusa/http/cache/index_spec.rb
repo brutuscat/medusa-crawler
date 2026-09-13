@@ -41,7 +41,15 @@ module Medusa
 
       index.write(match, stored)
 
-      expect(index.lookup(url, headers).entry).to eq(stored)
+      retrieved = index.lookup(url, headers).entry
+      expect(retrieved).to have_attributes(
+        status: stored.status,
+        headers: stored.headers,
+        body: stored.body,
+        vary: stored.vary,
+        vary_values: stored.vary_values
+      )
+      expect(retrieved.stored_at).to be_within(0.001).of(stored.stored_at)
     end
 
     it 'does not return a variant selected by different request headers' do

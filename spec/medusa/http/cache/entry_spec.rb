@@ -91,7 +91,7 @@ module Medusa
     end
 
     it 'parses flag, token, and escaped quoted Cache-Control directives' do
-      directives = described_class.cache_directives('public, max-age=60, extension="a\\\"b"')
+      directives = described_class.cache_directives('public, max-age=60, extension="a\"b"')
 
       expect(directives).to eq('public' => nil, 'max-age' => '60', 'extension' => 'a"b')
     end
