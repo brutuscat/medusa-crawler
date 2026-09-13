@@ -1,7 +1,7 @@
 require 'uri'
 require 'medusa/storage'
 require 'medusa/http/cache/entry'
-require 'medusa/http/cache/store'
+require 'medusa/http/cache/index'
 
 module Medusa
   class HTTP
@@ -13,14 +13,14 @@ module Medusa
 
       attr_reader :strategy
 
-      def initialize(store: nil, strategy: :revalidation, logger: nil)
+      def initialize(storage: nil, strategy: :revalidation, logger: nil)
         strategy = strategy.to_sym
         unless STRATEGIES.include?(strategy)
           raise ArgumentError, "http_cache strategy must be one of: #{STRATEGIES.join(', ')}"
         end
 
-        backend = store || Storage.Moneta(:Memory, prefix: 'medusa-http-cache')
-        @store = Store.new(backend) { |event, fields| warn_log(event, fields) }
+        storage ||= Storage.Moneta(:Memory, prefix: 'medusa-http-cache')
+        @index = Index.new(storage:) { |event, fields| warn_log(event, fields) }
         @strategy = strategy
         @logger = logger
       end
@@ -28,7 +28,7 @@ module Medusa
       # Wrap one HTTP GET. The block receives request headers and must return a Result.
       def fetch(url, request_headers = {}, partition: nil, &request)
         request_headers = Entry.normalize_headers(request_headers)
-        match = @store.lookup(url, request_headers, partition:)
+        match = @index.lookup(url, request_headers, partition:)
 
         if strategy == :freshness && match.entry&.fresh?
           debug('freshness', url:, result: :fresh)
@@ -57,10 +57,10 @@ module Medusa
 
         entry = source.revalidate(response.headers, request_headers)
         if entry.no_store?
-          @store.delete(match, source)
+          @index.delete(match, source)
           debug('bypass', url:, reason: :no_store)
         else
-          @store.write(match, entry, replacing: source)
+          @index.write(match, entry, replacing: source)
         end
         debug('revalidate', url:, result: :not_modified)
 
@@ -70,11 +70,11 @@ module Medusa
       def resolve_response(url, match, response, request_headers)
         entry = Entry.from(response, request_headers)
         if entry.cacheable?(strategy)
-          @store.write(match, entry)
+          @index.write(match, entry)
           event = match.entry ? 'revalidate' : 'store'
           debug(event, url:, result: (match.entry ? :modified : :stored))
         elsif response.code.to_i != 304
-          @store.delete(match) if match.entry && response.code.to_i < 500
+          @index.delete(match) if match.entry && response.code.to_i < 500
           debug('bypass', url:, reason: bypass_reason(entry))
         end
 
@@ -92,7 +92,7 @@ module Medusa
       def cached_result(entry, response_time: nil)
         Result.new(
           body: entry.body.dup,
-          headers: entry.headers.dup,
+          headers: entry.response_headers,
           response_time:,
           code: entry.status,
           redirect_to: nil,
@@ -110,8 +110,6 @@ module Medusa
         message = ['medusa.http_cache', event]
         fields.each { |key, value| message << "#{key}=#{log_value(value)}" }
         @logger.public_send(level) { message.join(' ') }
-      rescue StandardError
-        nil
       end
 
       def log_value(value)
@@ -124,7 +122,7 @@ module Medusa
           copy.user = nil
           copy.password = nil
         end
-      rescue StandardError
+      rescue URI::InvalidURIError, URI::InvalidComponentError
         uri
       end
     end

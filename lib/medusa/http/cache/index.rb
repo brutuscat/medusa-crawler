@@ -3,14 +3,16 @@ require 'digest'
 module Medusa
   class HTTP
     class Cache
-      class Store
+      # Maps a request identity to its cached response variants. The injected
+      # storage only needs to implement [], []=, and delete.
+      class Index
         VERSION = 1
         SENSITIVE_HEADERS = %w[authorization cookie].freeze
 
         Match = Data.define(:url, :key, :entry, :validation_entry)
 
-        def initialize(backend, &on_error)
-          @backend = backend
+        def initialize(storage:, &on_error)
+          @storage = storage
           @on_error = on_error
           @mutex = Mutex.new
         end
@@ -70,7 +72,7 @@ module Medusa
         def read(key, url) = @mutex.synchronize { read_unlocked(key, url) }
 
         def read_unlocked(key, url)
-          bucket = @backend[key]
+          bucket = read_bucket(key, url)
           return if bucket.nil?
 
           unless valid_bucket?(bucket)
@@ -85,21 +87,43 @@ module Medusa
           error('corrupt_entry', url:)
           delete_bucket(key, url)
           nil
+        end
+
+        def read_bucket(key, url)
+          @storage[key]
         rescue StandardError => exception
-          error('storage_error', url:, operation: :read, error: exception.class.name)
+          error(
+            'storage_error',
+            url:,
+            operation: :read,
+            error: exception.class.name,
+            message: exception.message
+          )
           nil
         end
 
         def write_bucket(key, entries, url)
-          @backend[key] = {'version' => VERSION, 'variants' => entries.map(&:to_h)}
+          @storage[key] = {'version' => VERSION, 'variants' => entries.map(&:to_h)}
         rescue StandardError => exception
-          error('storage_error', url:, operation: :write, error: exception.class.name)
+          error(
+            'storage_error',
+            url:,
+            operation: :write,
+            error: exception.class.name,
+            message: exception.message
+          )
         end
 
         def delete_bucket(key, url)
-          @backend.delete(key)
+          @storage.delete(key)
         rescue StandardError => exception
-          error('storage_error', url:, operation: :delete, error: exception.class.name)
+          error(
+            'storage_error',
+            url:,
+            operation: :delete,
+            error: exception.class.name,
+            message: exception.message
+          )
         end
 
         def valid_bucket?(bucket)

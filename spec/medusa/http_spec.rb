@@ -37,14 +37,14 @@ module Medusa
 
       it 'revalidates through OpenURI and returns the stored representation after 304' do
         url = URI(SPEC_DOMAIN).merge('/etag').to_s
-        store = {}
+        storage = {}
         stub_request(:get, url)
           .to_return(body: 'version one', status: 200,
                      headers: {'Content-Type' => 'text/plain', 'ETag' => '"v1"'})
           .then
           .to_return(body: '', status: 304, headers: {'ETag' => '"v1"'})
 
-        cache = HTTP::Cache.new(store:, strategy: :revalidation)
+        cache = HTTP::Cache.new(storage:, strategy: :revalidation)
         http = Medusa::HTTP.new(cache:)
         first = http.fetch_page(url)
         second = http.fetch_page(url)
@@ -63,7 +63,7 @@ module Medusa
           .to_return(body: 'fresh', status: 200,
                      headers: {'Content-Type' => 'text/plain', 'Cache-Control' => 'private, max-age=60'})
 
-        cache = HTTP::Cache.new(store: {}, strategy: :freshness)
+        cache = HTTP::Cache.new(storage: {}, strategy: :freshness)
         http = Medusa::HTTP.new(cache:)
         first = http.fetch_page(url)
         second = http.fetch_page(url)

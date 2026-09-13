@@ -1,0 +1,32 @@
+marshal:
+  url: https://www.example.com/legacy
+  headers:
+    content-type: text/plain
+  data:
+    category: archive
+  body: legacy body
+  links:
+    - https://www.example.com/next
+  code: 200
+  visited: true
+  depth: 2
+  referer: https://www.example.com/
+  redirect_to:
+  response_time: 15
+  fetched: true
+hash:
+  url: https://www.example.com/legacy
+  headers:
+    content-type: text/plain
+  data:
+    category: archive
+  body: legacy body
+  links:
+    - https://www.example.com/next
+  code: 200
+  visited: true
+  depth: 2
+  referer: https://www.example.com/
+  redirect_to: ""
+  response_time: 15
+  fetched: true

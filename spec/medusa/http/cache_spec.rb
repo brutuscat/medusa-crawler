@@ -5,7 +5,7 @@ require 'medusa/http/cache'
 module Medusa
   RSpec.describe HTTP::Cache do
     let(:url) { URI('https://www.example.com/resource') }
-    let(:store) { {} }
+    let(:storage) { {} }
     let(:result_class) { HTTP::Cache::Result }
 
     def response(body: '', headers: {}, code: 200, response_time: 1)
@@ -13,7 +13,7 @@ module Medusa
     end
 
     it 'revalidates an ETag and reuses the stored representation after 304' do
-      cache = described_class.new(store: store, strategy: :revalidation)
+      cache = described_class.new(storage:, strategy: :revalidation)
 
       first = cache.fetch(url) do |headers|
         expect(headers).not_to have_key('if-none-match')
@@ -32,7 +32,7 @@ module Medusa
     end
 
     it 'sends Last-Modified when ETag is unavailable' do
-      cache = described_class.new(store: store, strategy: :revalidation)
+      cache = described_class.new(storage:, strategy: :revalidation)
       modified = 'Wed, 09 Sep 2026 14:20:00 GMT'
 
       cache.fetch(url) { response(body: 'body', headers: {'last-modified' => modified}) }
@@ -44,7 +44,7 @@ module Medusa
     end
 
     it 'sends both validators when both are available' do
-      cache = described_class.new(store: store, strategy: :revalidation)
+      cache = described_class.new(storage:, strategy: :revalidation)
       modified = 'Wed, 09 Sep 2026 14:20:00 GMT'
 
       cache.fetch(url) do
@@ -59,7 +59,7 @@ module Medusa
     end
 
     it 'serves a fresh private response without contacting the origin' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
       requests = 0
 
       cache.fetch(url) do
@@ -78,7 +78,7 @@ module Medusa
     end
 
     it 'revalidates a no-cache response even while max-age is positive' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url) do
         response(body: 'body', headers: {'cache-control' => 'no-cache, max-age=60', 'etag' => '"v1"'})
@@ -93,7 +93,7 @@ module Medusa
     end
 
     it 'does not retain a no-store response' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
       requests = 0
 
       2.times do
@@ -105,11 +105,11 @@ module Medusa
       end
 
       expect(requests).to eq(2)
-      expect(store).to be_empty
+      expect(storage).to be_empty
     end
 
     it 'keeps Vary variants distinct' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url, {'Accept-Language' => 'en'}) do
         response(body: 'English', headers: {'cache-control' => 'max-age=60', 'vary' => 'Accept-Language'})
@@ -127,13 +127,13 @@ module Medusa
     end
 
     it 'stores Vary: * but never uses it as a freshness match' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url) do
         response(body: 'first', headers: {'cache-control' => 'max-age=60', 'vary' => '*'})
       end
 
-      expect(store).not_to be_empty
+      expect(storage).not_to be_empty
 
       second = cache.fetch(url) do |headers|
         expect(headers).not_to have_key('if-none-match')
@@ -146,7 +146,7 @@ module Medusa
     end
 
     it 'uses a stored Vary: * response as a validation candidate' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url) do
         response(body: 'body', headers: {'cache-control' => 'max-age=60', 'vary' => '*', 'etag' => '"v1"'})
@@ -162,7 +162,7 @@ module Medusa
     end
 
     it 'can validate a stored response that does not match the current Vary selectors' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url, {'Accept-Language' => 'en'}) do
         response(
@@ -190,22 +190,22 @@ module Medusa
     end
 
     it 'keeps the selected representation in memory while revalidation is in flight' do
-      cache = described_class.new(store: store, strategy: :revalidation)
+      cache = described_class.new(storage:, strategy: :revalidation)
       cache.fetch(url) { response(body: 'snapshot', headers: {'etag' => '"v1"'}) }
 
       second = cache.fetch(url) do |headers|
         expect(headers['if-none-match']).to eq('"v1"')
-        store.clear
+        storage.clear
         response(code: 304, headers: {'etag' => '"v1"'})
       end
 
       expect(second.from_cache).to be(true)
       expect(second.body).to eq('snapshot')
-      expect(store).not_to be_empty
+      expect(storage).not_to be_empty
     end
 
     it 'retries an unexpected 304 once without conditional headers when no representation exists' do
-      cache = described_class.new(store: store, strategy: :revalidation)
+      cache = described_class.new(storage:, strategy: :revalidation)
       requests = 0
 
       result = cache.fetch(url) do |headers|
@@ -225,7 +225,7 @@ module Medusa
     end
 
     it 'partitions stored responses by caller identity without storing the identity in the key' do
-      cache = described_class.new(store: store, strategy: :freshness)
+      cache = described_class.new(storage:, strategy: :freshness)
 
       cache.fetch(url, {}, partition: ['alice', 'secret']) do
         response(body: 'Alice', headers: {'cache-control' => 'max-age=60'})
@@ -239,11 +239,11 @@ module Medusa
 
       expect(bob.from_cache).to be(false)
       expect(alice.body).to eq('Alice')
-      expect(store.keys.join).not_to include('alice', 'secret', 'bob')
+      expect(storage.keys.join).not_to include('alice', 'secret', 'bob')
     end
 
     it 'fails open when the backing store cannot be read or written' do
-      broken_store = Class.new do
+      broken_storage = Class.new do
         def [](_key)
           raise 'read failed'
         end
@@ -256,7 +256,7 @@ module Medusa
           raise 'delete failed'
         end
       end.new
-      cache = described_class.new(store: broken_store, strategy: :revalidation)
+      cache = described_class.new(storage: broken_storage, strategy: :revalidation)
 
       result = cache.fetch(url) { response(body: 'network', headers: {'etag' => '"v1"'}) }
 
@@ -264,8 +264,20 @@ module Medusa
       expect(result.from_cache).to be(false)
     end
 
+    it 'does not hide exceptions raised by the configured logger' do
+      logger = Class.new do
+        def debug
+          raise 'logger failed'
+        end
+      end.new
+      cache = described_class.new(storage:, strategy: :revalidation, logger:)
+
+      expect { cache.fetch(url) { response(body: 'network', headers: {'etag' => '"v1"'}) } }
+        .to raise_error('logger failed')
+    end
+
     it 'rejects unsupported cache strategies' do
-      expect { described_class.new(store: store, strategy: :magic) }
+      expect { described_class.new(storage:, strategy: :magic) }
         .to raise_error(ArgumentError, /strategy/)
     end
   end
