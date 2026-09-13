@@ -16,7 +16,7 @@ module Medusa
       store.write(match, entry)
 
       expect(store.lookup(url, headers).entry).to eq(entry)
-      expect(store.lookup(url, 'accept-language' => 'es').entry).to be_nil
+      expect(store.lookup(url, {'accept-language' => 'es'}).entry).to be_nil
     end
   end
 end
