@@ -36,9 +36,13 @@ module Medusa
             entries = read_unlocked(match.key, match.url) || []
             if replacing
               index = entries.index(replacing)
-              return false unless index
-
-              entries[index] = entry
+              if index
+                entries[index] = entry
+              elsif entries.empty?
+                entries << entry
+              else
+                return false
+              end
             else
               entries.reject! { |candidate| candidate.same_variant?(entry) }
               entries << entry
