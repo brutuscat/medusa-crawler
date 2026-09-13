@@ -126,7 +126,9 @@ module Medusa
           # String#to_s returns itself for a String, so copy before freezing.
           def immutable_string(value) = value.to_s.dup.freeze
 
-          def immutable_optional_string(value) = immutable_string(value) unless value.nil?
+          def immutable_optional_string(value)
+            immutable_string(value) unless value.nil?
+          end
 
           def unescape_quoted(value) = value.gsub(/\\(.)/, '\\1')
         end
