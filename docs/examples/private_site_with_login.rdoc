@@ -7,10 +7,17 @@ The runnable code is in +examples/private_site_with_login.rb+:
 
     MEDUSA_USERNAME=user MEDUSA_PASSWORD=secret ruby examples/private_site_with_login.rb
 
-The example submits +username+ and +password+ to the configured login endpoint, obtains the
-+Set-Cookie+ response header, and starts Medusa with +cookies:+ and +accept_cookies:+ enabled.
+The example submits +username+ and +password+ to the configured login endpoint, parses every
++Set-Cookie+ response field, and passes those +HTTP::Cookie+ objects to Medusa with +cookies:+ and
++accept_cookies:+ enabled. Passing the parsed objects preserves their domain, path, secure, and
+expiry attributes; the legacy +cookies: {name => value}+ form remains supported.
 It also uses the same User-Agent for the login request and the crawler. Some sites bind a session to
 that header, so changing it after authentication can invalidate an otherwise valid cookie.
+
+Medusa keeps one in-memory cookie store for the crawl and shares it across all worker threads.
+Cookies received while crawling therefore remain in the session regardless of which worker fetches
+the next page. Domain, path, secure, and expiry attributes are honored when Medusa builds each
+request's +Cookie+ header. Cookie state is not written to the configured page or HTTP-cache store.
 
 === Scope
 

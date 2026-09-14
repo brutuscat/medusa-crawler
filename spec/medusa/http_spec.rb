@@ -72,6 +72,24 @@ module Medusa
         expect(page.from_cache?).to be(false)
       end
 
+      it 'shares accepted cookies between HTTP clients' do
+        first_url = URI(SPEC_DOMAIN).merge('/login').to_s
+        second_url = URI(SPEC_DOMAIN).merge('/private').to_s
+        stub_request(:get, first_url)
+          .to_return(status: 200, headers: {'Set-Cookie' => 'session=abc123; Path=/'})
+        second_request = stub_request(:get, second_url)
+          .with(headers: {'Cookie' => 'session=abc123'})
+          .to_return(status: 200, body: 'Private page')
+
+        cookie_store = CookieStore.new
+        options = {accept_cookies: true, cookie_store:}
+        Medusa::HTTP.new(options).fetch_page(first_url)
+        page = Medusa::HTTP.new(options).fetch_page(second_url)
+
+        expect(page.body).to eq('Private page')
+        expect(second_request).to have_been_requested.once
+      end
+
       it 'revalidates through OpenURI and returns the stored representation after 304' do
         url = URI(SPEC_DOMAIN).merge('/etag').to_s
         storage = {}

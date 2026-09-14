@@ -14,7 +14,7 @@ module Medusa
 
     def initialize(opts = {})
       @opts = opts
-      @cookie_store = CookieStore.new(@opts[:cookies])
+      @cookie_store = @opts[:cookie_store] || CookieStore.new(@opts[:cookies])
       @cache = Cache.from(@opts[:http_cache], logger: @opts[:logger])
     end
 
@@ -125,7 +125,7 @@ module Medusa
     # HTTP cache policy wraps the existing OpenURI request when enabled.
     #
     def get_response(url, referer = nil)
-      headers = request_headers(referer)
+      headers = request_headers(url, referer)
       return network_response(url, headers) unless @cache
 
       @cache.fetch(url, headers, partition: http_basic_authentication) do |cache_headers|
@@ -133,11 +133,12 @@ module Medusa
       end
     end
 
-    def request_headers(referer)
+    def request_headers(url, referer)
       headers = {}
       headers['User-Agent'] = user_agent if user_agent
       headers['Referer'] = referer.to_s if referer
-      headers['Cookie'] = @cookie_store.to_s unless @cookie_store.empty? || (!accept_cookies? && @opts[:cookies].nil?)
+      cookie_header = @cookie_store.header_for(url)
+      headers['Cookie'] = cookie_header unless cookie_header.empty? || (!accept_cookies? && @opts[:cookies].nil?)
       headers
     end
 
@@ -171,7 +172,7 @@ module Medusa
 
         finish = Time.now
         response_time = ((finish - start) * 1000).round
-        @cookie_store.merge!(resource.meta['set-cookie']) if accept_cookies?
+        @cookie_store.store(resource.metas.fetch('set-cookie', []), origin: url) if accept_cookies?
 
         Cache::Result.new(
           body: resource.read,

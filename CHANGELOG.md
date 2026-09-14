@@ -3,6 +3,10 @@
 Features:
  - Add optional private HTTP caching with conditional revalidation, freshness, `Vary`, persistent Moneta stores, and diagnostics
 
+Fixes:
+ - Share one thread-safe, standards-aware cookie session across all crawl workers
+ - Preserve the pre-2.0 Hash-like CookieStore API while retaining scoped cookie attributes
+
 ## Pre-release v2.0.0.pre.2 (2026-08-26)
 
 Fixes:
