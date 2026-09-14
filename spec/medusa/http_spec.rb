@@ -82,8 +82,9 @@ module Medusa
           .to_return(status: 200, body: 'Private page')
 
         cookie_store = CookieStore.new
-        Medusa::HTTP.new({accept_cookies: true}, cookie_store:).fetch_page(first_url)
-        page = Medusa::HTTP.new({accept_cookies: true}, cookie_store:).fetch_page(second_url)
+        options = {accept_cookies: true, cookie_store:}
+        Medusa::HTTP.new(options).fetch_page(first_url)
+        page = Medusa::HTTP.new(options).fetch_page(second_url)
 
         expect(page.body).to eq('Private page')
         expect(second_request).to have_been_requested.once
