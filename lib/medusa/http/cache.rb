@@ -6,6 +6,7 @@ require 'medusa/http/cache/index'
 
 module Medusa
   class HTTP
+    # Coordinates cached response lookup, validation, and persistence.
     class Cache
       STRATEGIES = %i[revalidation freshness].freeze
       CONDITIONAL_HEADERS = %w[if-none-match if-modified-since].freeze
@@ -111,6 +112,10 @@ module Medusa
         :no_freshness_or_validator
       end
 
+      # Set-Cookie does not prohibit HTTP caching. Medusa nevertheless avoids
+      # persisting these responses because cookie state is runtime-scoped while
+      # cache storage may persist across crawler instances. Reusing the response
+      # could suppress a required cookie mutation.
       def sets_cookie?(response)
         response.headers.to_h.any? { |name, _value| name.to_s.casecmp?('set-cookie') }
       end

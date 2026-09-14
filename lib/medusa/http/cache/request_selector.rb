@@ -3,6 +3,7 @@ require 'digest'
 module Medusa
   class HTTP
     class Cache
+      # Normalizes request selectors and fingerprints values that may contain secrets.
       module RequestSelector
         SENSITIVE_HEADERS = %w[authorization cookie].freeze
 

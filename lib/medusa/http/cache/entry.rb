@@ -4,6 +4,7 @@ require 'medusa/http/cache/request_selector'
 module Medusa
   class HTTP
     class Cache
+      # Stores an immutable response together with its freshness and validation policy.
       Entry = Data.define(:status, :headers, :body, :vary, :vary_values, :stored_at) do
         CACHEABLE_STATUS = 200
         CONNECTION_HEADERS = %w[
@@ -129,7 +130,7 @@ module Medusa
           end
 
           def unescape_quoted(value) = value.gsub(/\\(.)/, '\\1')
-        end
+        end # class << self
 
         def to_h
           {

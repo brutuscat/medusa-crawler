@@ -59,6 +59,8 @@ module Medusa
 
         private
 
+        # Replace only the exact Entry value originally read. Another request may
+        # have replaced or intentionally deleted it while revalidation was in flight.
         def replace_snapshot(entries, snapshot, replacement)
           index = entries.index(snapshot)
           return false unless index
