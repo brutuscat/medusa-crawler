@@ -53,7 +53,11 @@ module Medusa
       # proxy server port number
       :proxy_port => false,
       # HTTP read timeout in seconds
-      :read_timeout => nil
+      :read_timeout => nil,
+      # HTTP response caching is opt-in; true uses an in-memory cache
+      :http_cache => false,
+      # optional Ruby Logger-compatible object for diagnostics
+      :logger => nil
     }.freeze
 
     # Create setter methods for all options to be called from the crawl block
@@ -78,8 +82,6 @@ module Medusa
       @after_crawl_blocks = []
       @opts = opts
       @focus_crawl_block = nil
-
-
       yield self if block_given?
     end
 
@@ -201,18 +203,21 @@ module Medusa
       storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
+      cache = HTTP::Cache.from(@opts[:http_cache], logger: @opts[:logger])
+      @opts[:http_cache] = cache if cache
 
       freeze_options
     end
 
     #
     # Freeze the opts Hash so that no options can be modified
-    # once the crawl begins
+    # once the crawl begins. Runtime collaborators such as a logger remain
+    # mutable; the options hash itself is still frozen.
     #
     def freeze_options
+      @opts.except(:logger, :http_cache).each_value(&:freeze)
+      @opts[:cookies]&.each_key { @opts[:cookies][_1].freeze }
       @opts.freeze
-      @opts.each_key { |key| @opts[key].freeze }
-      @opts[:cookies].each_key { |key| @opts[:cookies][key].freeze } rescue nil
     end
 
     #
@@ -275,6 +280,7 @@ module Medusa
     # Returns +true+ if we are over the page depth limit.
     # This only works when coming from a page and with the +depth_limit+ option set.
     # When neither is the case, will always return +false+.
+    #
     def too_deep?(from_page)
       if from_page && @opts[:depth_limit]
         from_page.depth >= @opts[:depth_limit]

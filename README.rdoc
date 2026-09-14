@@ -12,6 +12,7 @@ it visits. It is versatile, allowing you to write your own specialized tasks qui
 * Records response time for each page
 * Obey _robots.txt_ directives (optional, but recommended)
 * In-memory or persistent storage of pages during crawl, provided by Moneta[https://github.com/moneta-rb/moneta]
+* Optional private HTTP caching with ETag, Last-Modified, +304 Not Modified+, freshness, and +Vary+ support
 * Inherits OpenURI behavior (redirects, automatic charset and encoding detection, proxy configuration options).
 
 <b>Do you have an idea or a suggestion? {Open an issue and talk about it}[https://github.com/brutuscat/medusa-crawler/issues/new]</b>

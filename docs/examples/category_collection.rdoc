@@ -1,0 +1,24 @@
+== Collect categories from linking pages
+
+A page can mutate its own +Page#data+ while it is visited. This example records the
+heading of each +/categories/+ page as +page.data.category+.
+
+After the crawl, it follows the already-recorded graph in the other direction: for
+every product link on a category page, it adds that category to the fetched product's
++page.data.categories+ collection. A product linked from both "Shoes" and "Sale" is
+still fetched once, but ends with both values:
+
+  product.data.categories # => ["Shoes", "Sale"]
+
+The aggregation belongs in +after_crawl+ because the collection is not complete until
+all pages that might link to the product have been visited. Assigning the mutated
+product back to +pages+ also writes the change through storage adapters that return a
+deserialized copy rather than the stored object itself.
+
+The complete runnable example is in +examples/category_collection.rb+. It assumes
+category URLs contain +/categories/+, product URLs contain +/products/+, and the
+category name is the category page's first +h1+.
+
+Run it with:
+
+  MEDUSA_SITE_URL=https://shop.example bundle exec ruby examples/category_collection.rb

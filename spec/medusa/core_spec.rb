@@ -8,6 +8,81 @@ module Medusa
       WebMock.reset!
     end
 
+    it 'constructs the default HTTP cache when enabled' do
+      page = FakePage.new('cached')
+
+      crawl = Medusa.crawl(page.url, http_cache: true)
+
+      expect(crawl.pages[page.url].from_cache?).to be(false)
+    end
+
+    it 'keeps the pre-2.0 Tentacle constructor and shares one cache across workers' do
+      page = FakePage.new('shared-cache')
+      worker_caches = Queue.new
+
+      expect(Tentacle.instance_method(:initialize).parameters).to eq(
+        [[:req, :link_queue], [:req, :page_queue], [:opt, :opts]]
+      )
+      allow(Tentacle).to receive(:new).and_wrap_original do |constructor, *arguments|
+        worker_caches << arguments.fetch(2).fetch(:http_cache)
+        constructor.call(*arguments)
+      end
+
+      Medusa.crawl(page.url, http_cache: true, threads: 2)
+
+      caches = 2.times.map { worker_caches.pop }
+      expect(caches).to all(be_a(HTTP::Cache))
+      expect(caches.uniq.size).to eq(1)
+    end
+
+    it 'does not reuse a response that establishes a cookie across crawls' do
+      storage = {}
+      login_url = URI(SPEC_DOMAIN).merge('/cached-login').to_s
+      private_url = URI(SPEC_DOMAIN).merge('/private').to_s
+      login = stub_request(:get, login_url)
+        .to_return(
+          body: '<a href="/private">Private</a>',
+          headers: {
+            'Content-Type' => 'text/html',
+            'Cache-Control' => 'max-age=60',
+            'Set-Cookie' => 'session=first; Path=/'
+          }
+        )
+        .then
+        .to_return(
+          body: '<a href="/private">Private</a>',
+          headers: {
+            'Content-Type' => 'text/html',
+            'Cache-Control' => 'max-age=60',
+            'Set-Cookie' => 'session=second; Path=/'
+          }
+        )
+      first_private = stub_request(:get, private_url)
+        .with(headers: {'Cookie' => 'session=first'})
+        .to_return(body: 'first session', headers: {'Cache-Control' => 'no-store'})
+      second_private = stub_request(:get, private_url)
+        .with(headers: {'Cookie' => 'session=second'})
+        .to_return(body: 'second session', headers: {'Cache-Control' => 'no-store'})
+      options = {
+        accept_cookies: true,
+        threads: 1,
+        http_cache: {storage:, strategy: :freshness}
+      }
+
+      Medusa.crawl(login_url, options)
+      Medusa.crawl(login_url, options)
+
+      expect(login).to have_been_requested.twice
+      expect(first_private).to have_been_requested.once
+      expect(second_private).to have_been_requested.once
+    end
+
+    it 'rejects the same unsupported cache configuration as HTTP' do
+      page = FakePage.new('invalid-cache')
+
+      expect { Medusa.crawl(page.url, http_cache: Object.new) }.to raise_error(ArgumentError, /http_cache/)
+    end
+
     RSpec.shared_examples_for "crawl" do
       it "should crawl all the html pages in a domain by following <a> href's" do
         pages = []

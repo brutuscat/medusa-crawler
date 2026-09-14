@@ -1,4 +1,3 @@
-require 'rubygems'
 require 'cgi'
 require 'nokogiri'
 require 'ostruct'
@@ -52,6 +51,7 @@ module Medusa
       @response_time = params[:response_time]
       @body = params[:body]
       @error = params[:error]
+      @from_cache = !!params[:from_cache]
 
       @fetched = !params[:code].nil?
     end
@@ -62,12 +62,12 @@ module Medusa
     def links
       return @links unless @links.nil?
       @links = []
-      return @links if !doc
+      return @links unless doc
 
       doc.search("//a[@href]").each do |a|
         next if a['data-method'] && a['data-method'] != 'get'
         u = a['href']
-        next if u.nil? or u.empty?
+        next if u.nil? || u.empty?
         abs = to_absolute(u) rescue next
         @links << abs if in_domain?(abs)
       end
@@ -95,9 +95,10 @@ module Medusa
     # Was the page successfully fetched?
     # +true+ if the page was fetched with no error, +false+ otherwise.
     #
-    def fetched?
-      @fetched
-    end
+    def fetched? = @fetched
+
+    # Was this representation body supplied by the HTTP cache?
+    def from_cache? = @from_cache
 
     #
     # Array of cookies received with this page as WEBrick::Cookie objects.
@@ -109,33 +110,25 @@ module Medusa
     #
     # The content-type returned by the HTTP request for this page
     #
-    def content_type
-      headers['content-type']
-    end
+    def content_type = headers['content-type']
 
     #
     # Returns +true+ if the page is a HTML document, returns +false+
     # otherwise.
     #
-    def html?
-      !!(content_type =~ %r{^(text/html|application/xhtml+xml)\b})
-    end
+    def html? = !!(content_type =~ %r{^(text/html|application/xhtml+xml)\b})
 
     #
     # Returns +true+ if the page is a HTTP redirect, returns +false+
     # otherwise.
     #
-    def redirect?
-      (300..307).include?(@code)
-    end
+    def redirect? = (300..307).include?(@code)
 
     #
     # Returns +true+ if the page was not found (returned 404 code),
     # returns +false+ otherwise.
     #
-    def not_found?
-      404 == @code
-    end
+    def not_found? = @code == 404
 
     #
     # Base URI from the HTML doc head element
@@ -147,7 +140,7 @@ module Medusa
         URI(href.to_s) unless href.nil? rescue nil
       end unless @base
 
-      return nil if @base && @base.to_s().empty?
+      return nil if @base && @base.to_s.empty?
       @base
     end
 
@@ -159,34 +152,27 @@ module Medusa
     def to_absolute(link)
       return nil if link.nil?
 
-      # remove anchor
-      link = link.to_s.gsub(/#.*$/,'')
-      if Gem::Requirement.new('< 2.5').satisfied_by?(Gem::Version.new(RUBY_VERSION))
-        link = URI.encode(URI.decode(link))
-      end
-
-      relative = URI(link)
+      relative = URI(link.to_s.gsub(/#.*$/, ''))
       absolute = base ? base.merge(relative) : @url.merge(relative)
-
       absolute.path = '/' if absolute.path.empty?
-
-      return absolute
+      absolute
     end
 
     #
     # Returns +true+ if *uri* is in the same domain as the page, returns
     # +false+ otherwise
     #
-    def in_domain?(uri)
-      uri.host == @url.host
-    end
+    def in_domain?(uri) = uri.host == @url.host
 
     def marshal_dump
-      [@url, @headers, @data, @body, @links, @code, @visited, @depth, @referer, @redirect_to, @response_time, @fetched]
+      [@url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
+       @redirect_to, @response_time, @fetched, @from_cache]
     end
 
     def marshal_load(ary)
-      @url, @headers, @data, @body, @links, @code, @visited, @depth, @referer, @redirect_to, @response_time, @fetched = ary
+      @url, @headers, @data, @body, @links, @code, @visited, @depth, @referer,
+        @redirect_to, @response_time, @fetched, from_cache = ary
+      @from_cache = !!from_cache
     end
 
     def to_hash
@@ -201,7 +187,8 @@ module Medusa
        'referer' => @referer.to_s,
        'redirect_to' => @redirect_to.to_s,
        'response_time' => @response_time,
-       'fetched' => @fetched}
+       'fetched' => @fetched,
+       'from_cache' => @from_cache}
     end
 
     def self.from_hash(hash)
@@ -216,7 +203,8 @@ module Medusa
        '@referer' => hash['referer'],
        '@redirect_to' => (!!hash['redirect_to'] && !hash['redirect_to'].empty?) ? URI(hash['redirect_to']) : nil,
        '@response_time' => hash['response_time'].to_i,
-       '@fetched' => hash['fetched']
+       '@fetched' => hash['fetched'],
+       '@from_cache' => !!hash['from_cache']
       }.each do |var, value|
         page.instance_variable_set(var, value)
       end
