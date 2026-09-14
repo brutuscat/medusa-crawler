@@ -12,6 +12,11 @@ The example submits +username+ and +password+ to the configured login endpoint, 
 It also uses the same User-Agent for the login request and the crawler. Some sites bind a session to
 that header, so changing it after authentication can invalidate an otherwise valid cookie.
 
+Medusa keeps one in-memory cookie store for the crawl and shares it across all worker threads.
+Cookies received while crawling therefore remain in the session regardless of which worker fetches
+the next page. Domain, path, secure, and expiry attributes are honored when Medusa builds each
+request's +Cookie+ header. Cookie state is not written to the configured page or HTTP-cache store.
+
 === Scope
 
 This pattern is suitable for normal form POST logins that return a session cookie. JavaScript

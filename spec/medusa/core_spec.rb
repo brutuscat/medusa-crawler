@@ -1,5 +1,6 @@
 require 'medusa/core'
 require 'fakeweb_helper'
+require 'timeout'
 
 module Medusa
   RSpec.describe Core do
@@ -81,6 +82,49 @@ module Medusa
       page = FakePage.new('invalid-cache')
 
       expect { Medusa.crawl(page.url, http_cache: Object.new) }.to raise_error(ArgumentError, /http_cache/)
+    end
+
+    it 'shares a session across overlapping tentacle requests' do
+      root_url = URI(SPEC_DOMAIN).merge('/session').to_s
+      child_urls = %w[one two].map { URI(SPEC_DOMAIN).merge("/session/#{_1}").to_s }
+      root_body = child_urls.map { |url| %(<a href="#{url}">#{url}</a>) }.join
+      stub_request(:get, root_url).to_return(
+        body: root_body,
+        headers: {'Content-Type' => 'text/html', 'Set-Cookie' => 'session=shared; Path=/'}
+      )
+
+      arrivals = Queue.new
+      releases = Queue.new
+      received_cookies = Queue.new
+      child_urls.each do |url|
+        stub_request(:get, url).to_return do |request|
+          received_cookies << request.headers['Cookie']
+          arrivals << true
+          releases.pop
+          {body: 'Private page', headers: {'Content-Type' => 'text/html'}}
+        end
+      end
+
+      visited = []
+      crawl_thread = Thread.new do
+        Medusa.crawl(root_url, threads: 2, accept_cookies: true) do |crawler|
+          crawler.on_every_page { visited << _1.url.to_s }
+        end
+      end
+      overlap_error = begin
+        Timeout.timeout(5) { child_urls.size.times { arrivals.pop } }
+        nil
+      rescue Timeout::Error => error
+        error
+      ensure
+        child_urls.size.times { releases << true }
+      end
+      crawl = crawl_thread.value
+
+      expect(overlap_error).to be_nil
+      expect(child_urls.size.times.map { received_cookies.pop }).to contain_exactly('session=shared', 'session=shared')
+      expect(visited).to contain_exactly(root_url, *child_urls)
+      expect(crawl.pages.values).to all(be_fetched)
     end
 
     RSpec.shared_examples_for "crawl" do

@@ -202,6 +202,7 @@ module Medusa
       storage = Storage::Base.new(@opts[:storage] || Storage.Moneta(:Memory))
       storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
+      @opts[:cookie_store] = CookieStore.new(@opts[:cookies], origins: @urls)
       @robots = Robotex.new(@opts[:user_agent]) if @opts[:obey_robots_txt]
       cache = HTTP::Cache.from(@opts[:http_cache], logger: @opts[:logger])
       @opts[:http_cache] = cache if cache
@@ -215,7 +216,7 @@ module Medusa
     # mutable; the options hash itself is still frozen.
     #
     def freeze_options
-      @opts.except(:logger, :http_cache).each_value(&:freeze)
+      @opts.except(:logger, :http_cache, :cookie_store).each_value(&:freeze)
       @opts[:cookies]&.each_key { @opts[:cookies][_1].freeze }
       @opts.freeze
     end

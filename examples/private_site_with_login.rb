@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require 'medusa'
+require 'http/cookie'
 require 'net/http'
 require 'uri'
-require 'webrick/cookie'
 
 module PrivateSiteWithLogin
   module_function
@@ -22,7 +22,7 @@ module PrivateSiteWithLogin
     end
 
     cookies = response.get_fields('Set-Cookie').to_a.flat_map do |header|
-      WEBrick::Cookie.parse_set_cookies(header)
+      ::HTTP::Cookie.parse(header, uri)
     end
 
     raise 'Login response did not set a session cookie' if cookies.empty?
