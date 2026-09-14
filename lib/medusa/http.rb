@@ -1,6 +1,7 @@
 require 'open-uri'
 require 'medusa/page'
 require 'medusa/cookie_store'
+require 'medusa/http/response'
 require 'medusa/http/cache'
 
 module Medusa
@@ -32,17 +33,17 @@ module Medusa
       pages = []
       begin
         url = URI(url) unless url.is_a?(URI)
-        get(url, referer) do |body, headers, code, location, redirect_to, response_time, from_cache|
+        get(url, referer) do |response|
           pages << Page.new(
-            location,
-            body:,
-            headers:,
-            code:,
+            response.url,
+            body: response.body,
+            headers: response.headers,
+            code: response.code,
             referer:,
             depth:,
-            redirect_to:,
-            response_time:,
-            from_cache:
+            redirect_to: response.redirect_to,
+            response_time: response.response_time,
+            from_cache: response.from_cache
           )
         end
 
@@ -102,8 +103,7 @@ module Medusa
     private
 
     # Retrieve HTTP responses for *url*, including redirects.
-    # Yields the response object, response code, and URI location
-    # for each response.
+    # Yields one response value for each response hop.
     #
     def get(url, referer = nil)
       limit = redirect_limit
@@ -113,11 +113,11 @@ module Medusa
           # request url
           loc = url.merge(loc) if loc.relative?
 
-          result = get_response(loc, referer)
+          response = get_response(loc, referer)
 
-          yield result.body, result.headers, result.code, loc, result.redirect_to, result.response_time, result.from_cache
+          yield response
           limit -= 1
-      end while (loc = result.redirect_to) && allowed?(result.redirect_to, url) && limit > 0
+      end while (loc = response.redirect_to) && allowed?(response.redirect_to, url) && limit > 0
     end
 
     #
@@ -174,7 +174,8 @@ module Medusa
         response_time = ((finish - start) * 1000).round
         @cookie_store.store(resource.metas.fetch('set-cookie', []), origin: url) if accept_cookies?
 
-        Cache::Result.new(
+        Response.new(
+          url:,
           body: resource.read,
           headers: resource.meta,
           response_time:,

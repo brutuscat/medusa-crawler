@@ -24,13 +24,14 @@ module Medusa
     let(:index) { described_class.new(storage:) }
 
     def entry(body: 'body', language: 'en')
-      result = HTTP::Cache::Result.new(
-        body,
-        {'vary' => 'accept-language', 'etag' => %("#{language}")},
-        1,
-        200,
-        nil,
-        false
+      result = HTTP.const_get(:Response, false).new(
+        url:,
+        body:,
+        headers: {'vary' => 'accept-language', 'etag' => %("#{language}")},
+        response_time: 1,
+        code: 200,
+        redirect_to: nil,
+        from_cache: false
       )
       HTTP::Cache::Entry.from(result, {'accept-language' => language})
     end

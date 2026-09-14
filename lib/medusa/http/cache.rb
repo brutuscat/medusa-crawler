@@ -1,5 +1,6 @@
 require 'uri'
 require 'medusa/storage'
+require 'medusa/http/response'
 require 'medusa/http/cache/request_selector'
 require 'medusa/http/cache/entry'
 require 'medusa/http/cache/index'
@@ -10,8 +11,6 @@ module Medusa
     class Cache
       STRATEGIES = %i[revalidation freshness].freeze
       CONDITIONAL_HEADERS = %w[if-none-match if-modified-since].freeze
-
-      Result = Data.define(:body, :headers, :response_time, :code, :redirect_to, :from_cache)
 
       attr_reader :strategy
 
@@ -42,14 +41,14 @@ module Medusa
         @logger = logger
       end
 
-      # Wrap one HTTP GET. The block receives request headers and must return a Result.
+      # Wrap one HTTP GET. The block receives request headers and must return an HTTP response value.
       def fetch(url, request_headers = {}, partition: nil, &request)
         request_headers = RequestSelector.normalize(request_headers)
         match = @index.lookup(url, request_headers, partition:)
 
         if strategy == :freshness && match.entry&.fresh?
           debug('freshness', url:, result: :fresh)
-          return cached_result(match.entry)
+          return cached_response(url, match.entry)
         end
 
         debug('freshness', url:, result: :stale) if match.entry && strategy == :freshness
@@ -84,7 +83,7 @@ module Medusa
         end
         debug('revalidate', url:, result: :not_modified)
 
-        cached_result(entry, response_time: response.response_time)
+        cached_response(url, entry, response_time: response.response_time)
       end
 
       def resolve_response(url, match, response, request_headers)
@@ -120,8 +119,9 @@ module Medusa
         response.headers.to_h.any? { |name, _value| name.to_s.casecmp?('set-cookie') }
       end
 
-      def cached_result(entry, response_time: nil)
-        Result.new(
+      def cached_response(url, entry, response_time: nil)
+        Response.new(
+          url:,
           body: entry.body.dup,
           headers: entry.response_headers,
           response_time:,

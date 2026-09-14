@@ -5,6 +5,10 @@ require 'fakeweb_helper'
 
 module Medusa
   RSpec.describe HTTP do
+    it 'keeps the response transport private' do
+      expect(described_class.const_get(:Response, false).superclass).to eq(Data)
+      expect { described_class::Response }.to raise_error(NameError, /private constant/)
+    end
 
     describe '.new' do
       it 'keeps the pre-2.0 positional options API' do
@@ -66,10 +70,25 @@ module Medusa
         expect(URI).to have_received(:open).exactly(HTTP::RETRY_LIMIT + 1).times
       end
 
-      it 'marks an ordinary network Page as not cached' do
-        page = Medusa::HTTP.new.fetch_page(FakePage.new('uncached').url)
+      it 'preserves exact network response semantics' do
+        source = FakePage.new('uncached', body: 'network body', content_type: 'text/plain')
+        page = Medusa::HTTP.new.fetch_page(source.url)
 
+        expect(page.url).to eq(URI(source.url))
+        expect(page.body).to eq('network body')
+        expect(page.code).to eq(200)
+        expect(page.response_time).to be_a(Integer)
         expect(page.from_cache?).to be(false)
+      end
+
+      it 'uses the URI actually requested for every redirect Page hop' do
+        source = FakePage.new('redirect-source', redirect: 'redirect-target')
+        target = URI(SPEC_DOMAIN).merge('/redirect-target')
+
+        pages = Medusa::HTTP.new.fetch_pages(source.url)
+
+        expect(pages.map(&:url)).to eq([URI(source.url), target])
+        expect(pages.map(&:redirect_to)).to eq([target, nil])
       end
 
       it 'shares accepted cookies between HTTP clients' do
@@ -90,7 +109,7 @@ module Medusa
         expect(second_request).to have_been_requested.once
       end
 
-      it 'revalidates through OpenURI and returns the stored representation after 304' do
+      it 'preserves exact revalidated response semantics after 304' do
         url = URI(SPEC_DOMAIN).merge('/etag').to_s
         storage = {}
         stub_request(:get, url)
@@ -104,15 +123,21 @@ module Medusa
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 
+        expect(first.url).to eq(URI(url))
+        expect(first.body).to eq('version one')
+        expect(first.code).to eq(200)
+        expect(first.response_time).to be_a(Integer)
         expect(first.from_cache?).to be(false)
-        expect(second.from_cache?).to be(true)
-        expect(second.code).to eq(200)
+
+        expect(second.url).to eq(URI(url))
         expect(second.body).to eq('version one')
+        expect(second.code).to eq(200)
         expect(second.response_time).to be_a(Integer)
+        expect(second.from_cache?).to be(true)
         expect(a_request(:get, url).with(headers: {'If-None-Match' => '"v1"'})).to have_been_made.once
       end
 
-      it 'serves a fresh cached Page without another OpenURI request' do
+      it 'preserves exact fresh-cache response semantics without another OpenURI request' do
         url = URI(SPEC_DOMAIN).merge('/fresh').to_s
         stub = stub_request(:get, url)
           .to_return(body: 'fresh', status: 200,
@@ -123,10 +148,17 @@ module Medusa
         first = http.fetch_page(url)
         second = http.fetch_page(url)
 
+        expect(first.url).to eq(URI(url))
+        expect(first.body).to eq('fresh')
+        expect(first.code).to eq(200)
+        expect(first.response_time).to be_a(Integer)
         expect(first.from_cache?).to be(false)
-        expect(second.from_cache?).to be(true)
+
+        expect(second.url).to eq(URI(url))
         expect(second.body).to eq('fresh')
+        expect(second.code).to eq(200)
         expect(second.response_time).to be_nil
+        expect(second.from_cache?).to be(true)
         expect(stub).to have_been_requested.once
       end
     end
