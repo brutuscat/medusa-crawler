@@ -151,7 +151,7 @@ module Medusa
       cookie.expires && cookie.expires < Time.now
     end
 
-    def each_scoped_cookie = each_scoped_pair.map(&:last)
+    def each_scoped_cookie = each_scoped_pair.map { |_key, cookie| cookie }
 
     def each_scoped_pair
       return enum_for(__method__) unless block_given?
