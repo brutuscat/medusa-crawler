@@ -49,6 +49,28 @@ RSpec.describe PrivateSiteWithLogin do
     end.to raise_error('Login failed with HTTP 401')
   end
 
+  it 'returns parsed cookies with their original scope and expiry' do
+    expires = Time.utc(2030, 1, 2, 3, 4, 5)
+    stub_request(:post, login_url).to_return(
+      status: 302,
+      headers: {
+        'Set-Cookie' => "session=abc123; Domain=example.com; Path=/private; Secure; Expires=#{expires.httpdate}"
+      }
+    )
+
+    cookie = described_class.login_cookies(
+      login_url:,
+      username: 'user',
+      password: 'secret'
+    ).fetch(0)
+
+    expect(cookie).to be_a(HTTP::Cookie)
+    expect(cookie.domain).to eq('example.com')
+    expect(cookie.path).to eq('/private')
+    expect(cookie).to be_secure
+    expect(cookie.expires).to eq(expires)
+  end
+
   it 'uses the same custom user agent for login and crawling' do
     user_agent = 'Private crawler/1.0'
     stub_request(:post, login_url)

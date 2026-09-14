@@ -27,7 +27,7 @@ module PrivateSiteWithLogin
 
     raise 'Login response did not set a session cookie' if cookies.empty?
 
-    cookies.to_h { |cookie| [cookie.name, cookie.value] }
+    cookies
   end
 
   def crawl(start_url:, login_url:, username:, password:, **options, &block)
