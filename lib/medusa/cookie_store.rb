@@ -7,11 +7,12 @@ require 'monitor'
 require 'webrick/cookie'
 
 module Medusa
-  # Stores RFC-scoped cookies while preserving the pre-2.0 Hash-like API.
+  # Ephemeral cookie jar shared by HTTP workers within one crawl.
   #
-  # The delegated Hash is a flat compatibility view because the old API could
-  # represent only one cookie per name. Moneta retains every domain/path variant
-  # used by #header_for. Both views are updated together under one Monitor.
+  # It applies origin, domain, path, security, and expiry rules while preserving
+  # the pre-2.0 Hash-like facade. The delegated Hash can represent only one
+  # cookie per name; Moneta retains every scoped variant used by #header_for.
+  # Cookie state is not persisted with PageStore or the HTTP cache.
   class CookieStore < DelegateClass(Hash)
     COOKIE_PREFIX = "cookie\0"
     private_constant :COOKIE_PREFIX
