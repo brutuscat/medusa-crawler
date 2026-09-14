@@ -61,7 +61,9 @@ module Medusa
         reconcile_compatibility!
         purge_expired!
 
-        scoped = each_scoped_cookie.select { _1.valid_for_uri?(uri) }.sort
+        scoped = each_scoped_cookie
+          .select { _1.valid_for_uri?(uri) }
+          .sort_by { |cookie| [-cookie.path.length, cookie.created_at] }
         [::HTTP::Cookie.cookie_value(scoped), legacy_header].reject(&:empty?).join('; ')
       end
     end
@@ -94,14 +96,28 @@ module Medusa
     end
 
     def apply_scoped(cookie)
+      key = cookie_key(cookie)
+      preserve_creation_time(cookie, @store.load(key))
+
       if cookie.expired?
-        @store.delete(cookie_key(cookie))
+        @store.delete(key)
         refresh_projection(cookie.name)
       else
-        @store[cookie_key(cookie)] = cookie
+        @store[key] = cookie
         @cookies[cookie.name] = cookie
         @projections[cookie.name] = cookie
       end
+    end
+
+    # HTTP::Cookie derives Max-Age expiry from created_at, while RFC 6265 stores
+    # expiry and creation time independently. Preserve both semantics on replace.
+    def preserve_creation_time(cookie, previous)
+      return unless previous && !previous.expired?
+
+      max_age = cookie.max_age
+      expires = cookie.expires if max_age
+      cookie.created_at = previous.created_at
+      cookie.expires = expires if max_age
     end
 
     # Hash mutations are detected lazily so all delegated Hash operations keep

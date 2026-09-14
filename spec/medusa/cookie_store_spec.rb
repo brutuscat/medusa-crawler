@@ -51,6 +51,30 @@ module Medusa
       expect(store.header_for('https://www.example.com/public')).to eq('session=root')
     end
 
+    it 'orders different cookie names by longest path first' do
+      store = CookieStore.new
+      store.store(
+        ['alpha=root; Path=/', 'zeta=private; Path=/private'],
+        origin:
+      )
+
+      expect(store.header_for(origin)).to eq('zeta=private; alpha=root')
+    end
+
+    it 'preserves creation time and order when replacing an equal-path cookie' do
+      older = ::HTTP::Cookie.parse('zeta=old; Path=/', origin).fetch(0)
+      newer = ::HTTP::Cookie.parse('alpha=peer; Path=/', origin).fetch(0)
+      older.created_at = Time.utc(2026, 1, 1)
+      newer.created_at = Time.utc(2026, 1, 2)
+      store = CookieStore.new([older, newer])
+
+      store.store('zeta=refreshed; Max-Age=3600; Path=/', origin:)
+
+      expect(store['zeta'].created_at).to eq(older.created_at)
+      expect(store['zeta'].expires).to be > Time.now + 3500
+      expect(store.header_for(origin)).to eq('zeta=refreshed; alpha=peer')
+    end
+
     it 'honors domain and secure attributes' do
       store = CookieStore.new
       store.store(
