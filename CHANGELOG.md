@@ -1,11 +1,19 @@
 ## Unreleased
 
+## Pre-release v2.0.0.pre.3 (2026-09-14)
+
 Features:
  - Add optional private HTTP caching with conditional revalidation, freshness, `Vary`, persistent Moneta stores, and diagnostics
+ - Add runnable examples for form login, HTTP Basic authentication, linked file downloads, nested frames, broken images, linked category collection, and persistent incremental crawling
 
 Fixes:
  - Share one thread-safe, standards-aware cookie session across all crawl workers
  - Preserve the pre-2.0 Hash-like CookieStore API while retaining scoped cookie attributes
+ - Fix documentation example links and validate rendered documentation with Medusa in CI
+
+Changes:
+ - Raise supported runtime dependency floors for Moneta, Nokogiri, OpenStruct, and WEBrick, and add `http-cookie` for scoped cookie handling
+ - Harden dependency and release CI with minimum-runtime and bleeding-edge dependency coverage, Bundler cooldown, SHA-pinned actions, and publishing gated on the full CI workflow
 
 ## Pre-release v2.0.0.pre.2 (2026-08-26)
 
