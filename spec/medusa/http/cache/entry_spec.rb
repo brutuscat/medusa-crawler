@@ -7,7 +7,15 @@ module Medusa
     let(:request_headers) { {'accept-language' => 'en'} }
 
     def response(body: 'body', headers: {}, code: 200)
-      HTTP::Cache::Result.new(body, headers, 1, code, nil, false)
+      HTTP.const_get(:Response, false).new(
+        url: URI('https://www.example.com/resource'),
+        body:,
+        headers:,
+        response_time: 1,
+        code:,
+        redirect_to: nil,
+        from_cache: false
+      )
     end
 
     it 'recognizes a stored validator' do

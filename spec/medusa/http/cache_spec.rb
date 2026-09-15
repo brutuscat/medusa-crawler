@@ -6,10 +6,18 @@ module Medusa
   RSpec.describe HTTP::Cache do
     let(:url) { URI('https://www.example.com/resource') }
     let(:storage) { {} }
-    let(:result_class) { HTTP::Cache::Result }
+    let(:response_class) { HTTP.const_get(:Response, false) }
 
-    def response(body: '', headers: {}, code: 200, response_time: 1)
-      result_class.new(body, headers, response_time, code, nil, false)
+    def response(body: '', headers: {}, code: 200, response_time: 1, response_url: url)
+      response_class.new(
+        url: response_url,
+        body:,
+        headers:,
+        response_time:,
+        code:,
+        redirect_to: nil,
+        from_cache: false
+      )
     end
 
     describe '.from' do
@@ -52,7 +60,9 @@ module Medusa
         response(code: 304, headers: {'etag' => '"v1"'})
       end
 
+      expect(first.url).to eq(url)
       expect(first.from_cache).to be(false)
+      expect(second.url).to eq(url)
       expect(second.from_cache).to be(true)
       expect(second.code).to eq(200)
       expect(second.body).to eq('version one')
@@ -99,6 +109,7 @@ module Medusa
       end
 
       expect(requests).to eq(1)
+      expect(hit.url).to eq(url)
       expect(hit.from_cache).to be(true)
       expect(hit.body).to eq('fresh')
       expect(hit.response_time).to be_nil

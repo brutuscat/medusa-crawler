@@ -23,6 +23,13 @@ module Medusa
     # Hash of options for the crawl
     attr_reader :opts
 
+    # Crawl work item carrying a URL and its traversal context to a Tentacle.
+    FetchTask = Data.define(:url, :referer, :depth) do
+      # Preserve Tentacle's pre-2.0 tuple-style queue consumption.
+      def to_ary = [url, referer, depth]
+    end
+    private_constant :FetchTask
+
     DEFAULT_OPTS = {
       # run 4 Tentacle threads to fetch pages
       :threads => 4,
@@ -161,7 +168,9 @@ module Medusa
         @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts.dup).run }
       end
 
-      @urls.each{ |url| link_queue.enq(url) }
+      @urls.each do |url|
+        link_queue.enq(FetchTask.new(url:, referer: nil, depth: 0))
+      end
 
       loop do
         page = page_queue.deq
@@ -171,7 +180,7 @@ module Medusa
 
         links = links_to_follow page
         links.each do |link|
-          link_queue << [link, page.url.dup, page.depth + 1]
+          link_queue << FetchTask.new(url: link, referer: page.url.dup, depth: page.depth + 1)
         end
         @pages.touch_keys links
 
