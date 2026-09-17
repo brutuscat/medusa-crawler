@@ -1,6 +1,6 @@
 ## Unreleased
 
-## Pre-release v2.0.0.pre.3 (2026-09-16)
+## Pre-release v2.0.0.pre.4 (2026-09-17)
 
 Features:
  - Add optional private HTTP caching with conditional revalidation, freshness, `Vary`, persistent Moneta stores, and diagnostics
