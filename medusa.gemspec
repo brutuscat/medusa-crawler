@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'medusa-crawler'
-  s.version = '2.0.0.pre.3'
+  s.version = '2.0.0.pre.4'
   s.summary = 'Medusa is a ruby crawler framework'
   s.authors = ['Mauro Asprea', 'Chris Kite']
   s.homepage = 'https://github.com/brutuscat/medusa-crawler'
