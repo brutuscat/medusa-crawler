@@ -26,6 +26,10 @@ module Medusa
         @http.fetch_pages(link, referer, depth).each { |page| @page_queue << page }
 
         delay
+        # Core uses this optional hook to retire one fetch only after its pages
+        # have entered the page queue; standalone Tentacle users keep the old
+        # page-only queue behavior.
+        @opts[:fetch_task_complete]&.call
       end
     end
 
