@@ -30,6 +30,12 @@ module Medusa
     end
     private_constant :FetchTask
 
+    FetchComplete = Object.new.freeze
+    private_constant :FetchComplete
+
+    WorkerFailure = Data.define(:error)
+    private_constant :WorkerFailure
+
     DEFAULT_OPTS = {
       # run 4 Tentacle threads to fetch pages
       :threads => 4,
@@ -158,49 +164,79 @@ module Medusa
 
       process_options
 
-      @urls.delete_if { |url| !visit_link?(url) }
+      reserved_urls = {}
+      @urls.delete_if do |url|
+        !visit_link?(url) || !reserve_url?(url, reserved_urls)
+      end
       return if @urls.empty?
 
+      @tentacles = []
       link_queue = Queue.new
       page_queue = Queue.new
+      workers_stopped = false
 
-      @opts[:threads].times do
-        @tentacles << Thread.new { Tentacle.new(link_queue, page_queue, @opts.dup).run }
-      end
-
-      @urls.each do |url|
-        link_queue.enq(FetchTask.new(url:, referer: nil, depth: 0))
-      end
-
-      loop do
-        page = page_queue.deq
-        @pages.touch_key page.url
-        do_page_blocks page
-        page.discard_doc! if @opts[:discard_page_bodies]
-
-        links = links_to_follow page
-        links.each do |link|
-          link_queue << FetchTask.new(url: link, referer: page.url.dup, depth: page.depth + 1)
-        end
-        @pages.touch_keys links
-
-        @pages[page.url] = page
-
-        # if we are done with the crawl, tell the threads to end
-        if link_queue.empty? and page_queue.empty?
-          until link_queue.num_waiting == @tentacles.size
-            Thread.pass
-          end
-          if page_queue.empty?
-            @tentacles.size.times { link_queue << :END }
-            break
+      begin
+        @opts[:threads].times do
+          worker_opts = @opts.merge(fetch_task_complete: -> { page_queue << FetchComplete })
+          @tentacles << Thread.new do
+            begin
+              Tentacle.new(link_queue, page_queue, worker_opts).run
+              nil
+            rescue StandardError => error
+              page_queue << WorkerFailure.new(error)
+              error
+            end
           end
         end
-      end
 
-      @tentacles.each { |thread| thread.join }
-      do_after_crawl_blocks
-      self
+        @urls.each do |url|
+          link_queue.enq(FetchTask.new(url:, referer: nil, depth: 0))
+        end
+
+        # Each admitted fetch remains outstanding until its pages have been
+        # handled and the worker reports that the fetch is complete. This also
+        # keeps redirect response pages attached to their parent task.
+        outstanding_fetches = @urls.size
+        while outstanding_fetches > 0
+          result = page_queue.deq
+
+          case result
+          when FetchComplete
+            outstanding_fetches -= 1
+          when WorkerFailure
+            raise result.error
+          else
+            page = result
+            @pages.touch_key page.url
+            do_page_blocks page
+            page.discard_doc! if @opts[:discard_page_bodies]
+
+            links = links_to_follow(page, reserved_urls)
+            links.each do |link|
+              link_queue << FetchTask.new(url: link, referer: page.url.dup, depth: page.depth + 1)
+            end
+            @pages.touch_keys links
+            outstanding_fetches += links.size
+
+            @pages[page.url] = page
+          end
+        end
+
+        stop_tentacles(link_queue)
+        workers_stopped = true
+        worker_error = @tentacles.map(&:value).find { |result| result.is_a?(Exception) }
+        raise worker_error if worker_error
+
+        do_after_crawl_blocks
+        self
+      rescue Exception => error
+        begin
+          cancel_tentacles(link_queue) unless workers_stopped
+        rescue Exception
+          # Keep the crawl failure as the exception observed by the caller.
+        end
+        raise error
+      end
     end
 
     private
@@ -255,9 +291,51 @@ module Medusa
     # Based on whether or not the link has already been crawled,
     # and the block given to focus_crawl()
     #
-    def links_to_follow(page)
+    def links_to_follow(page, reserved_urls)
       links = @focus_crawl_block ? @focus_crawl_block.call(page) : page.links
-      links.select { |link| visit_link?(link, page) }.map { |link| link.dup }
+      links.select do |link|
+        visit_link?(link, page) && reserve_url?(link, reserved_urls)
+      end.map { |link| link.dup }
+    end
+
+    # Reserve URLs separately from PageStore so queued work does not alter the
+    # store's existing placeholder and persistence behavior. Match PageStore's
+    # rule that HTTP and HTTPS URLs identify the same page.
+    def reserve_url?(url, reserved_urls)
+      keys = if %w[http https].include?(url.scheme)
+        %w[http https].map do |scheme|
+          equivalent_url = url.dup
+          equivalent_url.scheme = scheme
+          equivalent_url.to_s
+        end
+      else
+        [url.to_s]
+      end
+
+      return false if keys.any? { |key| reserved_urls.key?(key) }
+
+      keys.each { |key| reserved_urls[key] = true }
+      true
+    end
+
+    # Stop workers after normal completion. No fetch remains outstanding, so
+    # the queue contains only work that has already been accounted for.
+    def stop_tentacles(link_queue)
+      return if @tentacles.empty?
+
+      link_queue.clear
+      @tentacles.size.times { link_queue << :END }
+      @tentacles.each(&:join)
+    end
+
+    # On failure, cancel active fetches so a blocked request cannot prevent the
+    # original callback, storage, or worker exception from reaching the caller.
+    def cancel_tentacles(link_queue)
+      return if @tentacles.empty?
+
+      link_queue.clear
+      @tentacles.each { |thread| thread.kill if thread.alive? }
+      @tentacles.each(&:join)
     end
 
     #
