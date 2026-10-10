@@ -17,6 +17,7 @@ spec = Gem::Specification.new do |s|
   s.rdoc_options << '-m' << 'README.rdoc' << '-t' << 'Medusa'
   s.extra_rdoc_files = ['README.rdoc']
   s.add_runtime_dependency('http-cookie', '>= 1.1.6', '< 2')
+  s.add_runtime_dependency('async', '>= 2.46.0', '< 3')
   s.add_runtime_dependency('moneta', '~> 1.6', '>= 1.6.0')
   s.add_runtime_dependency('nokogiri', '~> 1.19', '>= 1.19.4')
   s.add_runtime_dependency('ostruct', '>= 0.6.3', '< 1.0')

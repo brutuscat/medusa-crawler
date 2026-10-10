@@ -1,5 +1,7 @@
 require 'medusa/core'
 require 'fakeweb_helper'
+require_relative '../support/local_http_server'
+require 'async'
 require 'timeout'
 
 module Medusa
@@ -7,6 +9,66 @@ module Medusa
 
     before(:each) do
       WebMock.reset!
+    end
+
+    def expect_worker_tasks_finished(core)
+      tasks = core.instance_variable_get(:@tentacles)
+      expect(tasks).not_to be_empty
+      expect(tasks).to all(satisfy(&:finished?))
+    end
+
+    def expect_worker_tasks_running(core)
+      tasks = core.instance_variable_get(:@tentacles)
+      expect(tasks).not_to be_empty
+      expect(tasks).to all(satisfy(&:alive?))
+    end
+
+    def allow_local_http
+      WebMock.disable_net_connect!(allow_localhost: true)
+    end
+
+    def close_local_http(server, *gates)
+      gates.compact.each(&:close)
+      server&.close
+    ensure
+      WebMock.disable_net_connect!
+    end
+
+    def finish_crawl_thread(thread)
+      thread.join(5)
+      thread.kill.join if thread.alive?
+    end
+
+    def wait_for_async(task, timeout: 5)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+      until yield
+        raise Timeout::Error, 'timed out waiting for an async spec condition' if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+        task.sleep(0.001)
+      end
+    end
+
+    def blocked_pair
+      gate = LocalHTTPServer::Gate.new
+      slow_started = Queue.new
+      server = nil
+      server = LocalHTTPServer.new do |request|
+        case request.path
+        when '/blocked-root'
+          %(<a href="#{server.url('/blocked-slow')}">slow</a><a href="#{server.url('/blocked-fast')}">fast</a>)
+        when '/blocked-slow'
+          slow_started << true
+          gate.wait(request.path)
+          'slow page'
+        when '/blocked-fast'
+          slow_started.pop
+          'fast page'
+        else
+          'fast page'
+        end
+      end
+
+      [server, gate, slow_started, server.url('/blocked-root'), server.url('/blocked-slow'), server.url('/blocked-fast')]
     end
 
     it 'constructs the default HTTP cache when enabled' do
@@ -82,6 +144,267 @@ module Medusa
       page = FakePage.new('invalid-cache')
 
       expect { Medusa.crawl(page.url, http_cache: Object.new) }.to raise_error(ArgumentError, /http_cache/)
+    end
+
+    it 'uses the configured fiber worker limit with real HTTP and a backlog' do
+      [1, 2, 4].each do |workers|
+        gate = LocalHTTPServer::Gate.new
+        server = LocalHTTPServer.new do |_request|
+          gate.wait
+          '<html></html>'
+        end
+        urls = (0...(workers + 5)).map { server.url("/limit-#{workers}-#{_1}") }
+        allow_local_http
+        crawl_thread = Thread.new { Medusa.crawl(urls, threads: workers) }
+
+        begin
+          Timeout.timeout(5) { workers.times { gate.arrivals.pop } }
+          expect(server.active_requests).to eq(workers)
+
+          gate.release(urls.size)
+          crawl = Timeout.timeout(5) { crawl_thread.value }
+
+          expect(crawl.pages.size).to eq(urls.size)
+          expect(crawl.instance_variable_get(:@tentacles).size).to eq(workers)
+          expect(server.request_count).to eq(urls.size)
+          expect(server.peak_active_requests).to eq(workers)
+          expect_worker_tasks_finished(crawl)
+        ensure
+          close_local_http(server, gate)
+          crawl_thread.join
+        end
+      end
+    end
+
+    it 'restores the caller scheduler and finishes its worker tasks after a synchronous crawl' do
+      server = LocalHTTPServer.new { |_request| '<html>done</html>' }
+      allow_local_http
+      caller_scheduler = Fiber.scheduler
+
+      begin
+        crawl = Medusa.crawl(server.url('/sync'), threads: 2)
+
+        expect(crawl.pages.size).to eq(1)
+        expect(Fiber.scheduler).to equal(caller_scheduler)
+        expect_worker_tasks_finished(crawl)
+      ensure
+        close_local_http(server)
+      end
+    end
+
+    it 'rejects an unsupported active scheduler before clearing configured storage' do
+      storage = Storage.Moneta(:Memory)
+      expect(storage).not_to receive(:clear)
+      allow(Fiber).to receive(:scheduler).and_return(Object.new)
+
+      expect { Medusa.crawl(SPEC_DOMAIN, storage: storage) }
+        .to raise_error(ArgumentError, /Async/)
+    end
+
+    it 'reuses an Async caller reactor while another task makes progress during a fetch' do
+      gate = LocalHTTPServer::Gate.new
+      server = LocalHTTPServer.new do |_request|
+        gate.wait
+        '<html>heartbeat</html>'
+      end
+      allow_local_http
+      async_thread = Thread.new do
+        Async do |parent|
+          caller_scheduler = Fiber.scheduler
+          heartbeat = 0
+          crawl_task = parent.async { Medusa.crawl(server.url('/heartbeat'), threads: 1) }
+          heartbeat_task = parent.async do |task|
+            wait_for_async(task) { gate.arrivals.size == 1 }
+            10.times do
+              heartbeat += 1
+              task.sleep(0)
+            end
+            gate.release
+          end
+
+          crawl = crawl_task.wait
+          heartbeat_task.wait
+          [crawl, heartbeat, caller_scheduler, Fiber.scheduler]
+        end.wait
+      end
+
+      begin
+        crawl, heartbeat, scheduler_before, scheduler_after = Timeout.timeout(5) { async_thread.value }
+        expect(crawl.pages.size).to eq(1)
+        expect(heartbeat).to eq(10)
+        expect(scheduler_after).to equal(scheduler_before)
+        expect_worker_tasks_finished(crawl)
+      ensure
+        close_local_http(server, gate)
+        finish_crawl_thread(async_thread)
+      end
+    end
+
+    it 'yields to other fibers during an HTTP timeout retry delay' do
+      gate = LocalHTTPServer::Gate.new
+      server = LocalHTTPServer.new do |_request|
+        gate.wait
+        '<html>retried</html>'
+      end
+      allow_local_http
+      stub_const('Medusa::HTTP::RETRY_LIMIT', 1)
+      url = server.url('/read-timeout-retry')
+      open_calls = 0
+      received_read_timeouts = []
+      allow(URI).to receive(:open).and_wrap_original do |open, requested_url, *arguments|
+        open_calls += 1 if requested_url.to_s == url
+        received_read_timeouts << arguments.last[:read_timeout]
+        open.call(requested_url, *arguments)
+      end
+      retry_delays = Queue.new
+      allow_any_instance_of(HTTP).to receive(:sleep).and_wrap_original do |sleep_method, duration|
+        retry_delays << duration
+        sleep_method.call(duration)
+      end
+
+      async_thread = Thread.new do
+        Async do |parent|
+          heartbeat = 0
+          crawl_task = parent.async do
+            Medusa.crawl(url, threads: 1, read_timeout: 0.05)
+          end
+          heartbeat_task = parent.async do |task|
+            wait_for_async(task) { !retry_delays.empty? }
+            10.times do
+              heartbeat += 1
+              task.sleep(0)
+            end
+            gate.close
+          end
+
+          crawl = crawl_task.wait
+          heartbeat_task.wait
+          [crawl, heartbeat, retry_delays.size.times.map { retry_delays.pop }]
+        end.wait
+      end
+
+      begin
+        crawl, heartbeat, delays = Timeout.timeout(5) { async_thread.value }
+        expect(crawl.pages.size).to eq(1)
+        expect(crawl.pages.values).to all(be_fetched)
+        expect(crawl.pages.values.map(&:code)).to eq([200])
+        expect(heartbeat).to eq(10)
+        expect(delays).to eq([2])
+        expect(open_calls).to eq(2)
+        expect(received_read_timeouts).to eq([0.05, 0.05])
+        expect(server.request_count).to be >= 2
+        expect_worker_tasks_finished(crawl)
+      ensure
+        close_local_http(server, gate)
+        finish_crawl_thread(async_thread)
+      end
+    end
+
+    it 'keeps two concurrent crawls isolated when one callback fails' do
+      bad_gate = LocalHTTPServer::Gate.new
+      good_gate = LocalHTTPServer::Gate.new
+      server = LocalHTTPServer.new do |request|
+        (request.path == '/isolated-bad' ? bad_gate : good_gate).wait(request.path)
+        "#{request.path} response"
+      end
+      allow_local_http
+      bad_url = server.url('/isolated-bad')
+      good_url = server.url('/isolated-good')
+      failure = RuntimeError.new('one crawl failed')
+      async_thread = Thread.new do
+        Async do |parent|
+          bad_core = nil
+          good_core = nil
+          bad_task = parent.async do
+            begin
+              Medusa.crawl(bad_url, threads: 1) do |crawler|
+                bad_core = crawler
+                crawler.on_every_page { raise failure }
+              end
+            rescue StandardError => error
+              error
+            end
+          end
+          good_task = parent.async do
+            Medusa.crawl(good_url, threads: 1) { |crawler| good_core = crawler }
+          end
+
+          wait_for_async(parent) { bad_gate.arrivals.size == 1 && good_gate.arrivals.size == 1 }
+          bad_gate.release
+          bad_result = bad_task.wait
+          good_running_after_failure = good_task.alive?
+          good_workers_running_after_failure = good_core.instance_variable_get(:@tentacles).map(&:alive?)
+          good_gate.release
+          [bad_result, good_task.wait, bad_core, good_core,
+           good_running_after_failure, good_workers_running_after_failure]
+        end.wait
+      end
+
+      begin
+        bad_result, good_result, bad_core, good_core, good_running, good_workers_running = Timeout.timeout(5) { async_thread.value }
+        expect(bad_result).to equal(failure)
+        expect(good_result.pages.size).to eq(1)
+        expect(bad_core).not_to equal(good_core)
+        expect(good_running).to be(true)
+        expect(good_workers_running).to eq([true])
+        expect_worker_tasks_finished(bad_core)
+        expect_worker_tasks_finished(good_core)
+      ensure
+        close_local_http(server, bad_gate, good_gate)
+        finish_crawl_thread(async_thread)
+      end
+    end
+
+    it 'cleans up blocked workers when the caller cancels a crawl task' do
+      gate = LocalHTTPServer::Gate.new
+      server = LocalHTTPServer.new do |request|
+        gate.wait(request.path)
+        'blocked response'
+      end
+      allow_local_http
+      urls = [server.url('/cancel-one'), server.url('/cancel-two')]
+      async_thread = Thread.new do
+        Async do |parent|
+          core = nil
+          after_crawl_called = false
+          sibling_ready = Queue.new
+          sibling_release = Queue.new
+          sibling_task = parent.async do |task|
+            sibling_ready << true
+            wait_for_async(task) { !sibling_release.empty? }
+            sibling_release.pop
+            :sibling_survived
+          end
+          crawl_task = parent.async do
+            Medusa.crawl(urls, threads: 2) do |crawler|
+              core = crawler
+              crawler.after_crawl { after_crawl_called = true }
+            end
+          end
+          wait_for_async(parent) { !sibling_ready.empty? }
+          wait_for_async(parent) { gate.arrivals.size == 2 }
+          crawl_task.cancel
+          wait_for_async(parent) { crawl_task.finished? }
+          crawl_task.wait
+          sibling_was_running = sibling_task.alive?
+          sibling_release << true
+          [crawl_task.finished?, crawl_task.cancelled?, core, after_crawl_called,
+           sibling_was_running, sibling_task.wait]
+        end.wait
+      end
+
+      begin
+        finished, cancelled, core, after_crawl_called, sibling_was_running, sibling_result = Timeout.timeout(5) { async_thread.value }
+        expect(finished).to be(true)
+        expect(cancelled).to be(true)
+        expect(after_crawl_called).to be(false)
+        expect(sibling_was_running).to be(true)
+        expect(sibling_result).to eq(:sibling_survived)
+        expect_worker_tasks_finished(core)
+      ensure
+        close_local_http(server, gate)
+        finish_crawl_thread(async_thread)
+      end
     end
 
     it 'shares a session across overlapping tentacle requests' do
@@ -214,123 +537,130 @@ module Medusa
       expect(events.last).to eq(:after_crawl)
     end
 
-    it 'runs page callbacks serially on the crawl caller thread' do
+    it 'runs callbacks serially on one caller-thread fiber while fetches use sibling fibers' do
       root_url = URI(SPEC_DOMAIN).merge('/serialized-callback-root').to_s
       child_urls = %w[one two].map { URI(SPEC_DOMAIN).merge("/serialized-callback-#{_1}").to_s }
       stub_request(:get, root_url).to_return(
         body: child_urls.map { |url| %(<a href="#{url}">child</a>) }.join,
         headers: {'Content-Type' => 'text/html'}
       )
-      request_threads = Queue.new
+      request_contexts = Queue.new
       child_urls.each do |url|
         stub_request(:get, url).to_return do
-          request_threads << Thread.current.object_id
+          request_contexts << [Thread.current.object_id, Fiber.current.object_id]
           {body: 'child page', headers: {'Content-Type' => 'text/html'}}
         end
       end
-      callback_threads = []
+      callback_contexts = []
       caller_thread = Thread.current.object_id
 
       Medusa.crawl(root_url, threads: 2) do |crawler|
-        crawler.on_every_page { callback_threads << Thread.current.object_id }
+        crawler.on_every_page { callback_contexts << [Thread.current.object_id, Fiber.current.object_id] }
       end
 
-      request_thread_ids = request_threads.size.times.map { request_threads.pop }
-      expect(callback_threads).to contain_exactly(*Array.new(3, caller_thread))
-      expect(request_thread_ids).not_to include(caller_thread)
+      requests = request_contexts.size.times.map { request_contexts.pop }
+      expect(callback_contexts.map(&:first)).to all(eq(caller_thread))
+      expect(callback_contexts.map(&:last).uniq.size).to eq(1)
+      expect(requests.map(&:first)).to all(eq(caller_thread))
+      expect(requests.map(&:last)).not_to include(callback_contexts.first.last)
     end
 
-    it 're-raises worker failures, skips after_crawl, and joins worker threads' do
+    it 're-raises worker failures and finishes owned tasks while a peer request is blocked' do
+      server, gate, slow_started, root_url, _slow_url, fast_url = blocked_pair
+      allow_local_http
       error = RuntimeError.new('unexpected worker failure')
-      allow_any_instance_of(HTTP).to receive(:fetch_pages).and_raise(error)
-      after_crawl_called = false
-      threads_before = Thread.list
-
-      expect do
-        Medusa.crawl(SPEC_DOMAIN, threads: 2) do |crawler|
-          crawler.after_crawl { after_crawl_called = true }
+      allow_any_instance_of(HTTP).to receive(:fetch_pages).and_wrap_original do |fetch, url, *arguments|
+        if url.to_s == fast_url
+          wait_for_async(Async::Task.current) { !slow_started.empty? }
+          raise error
         end
-      end.to raise_error(error)
 
-      expect(after_crawl_called).to be(false)
-      expect((Thread.list - threads_before).select(&:alive?)).to be_empty
-    end
-
-    it 're-raises callback failures, skips after_crawl, and joins worker threads' do
-      FakePage.new('callback-failure')
-      error = RuntimeError.new('page callback failed')
-      after_crawl_called = false
-      threads_before = Thread.list
-
-      expect do
-        Medusa.crawl(URI(SPEC_DOMAIN).merge('/callback-failure').to_s, threads: 2) do |crawler|
-          crawler.on_every_page { raise error }
-          crawler.after_crawl { after_crawl_called = true }
-        end
-      end.to raise_error(error)
-
-      expect(after_crawl_called).to be(false)
-      expect((Thread.list - threads_before).select(&:alive?)).to be_empty
-    end
-
-    it 'cancels a blocked worker when a page callback fails' do
-      root_url = URI(SPEC_DOMAIN).merge('/blocked-callback-root').to_s
-      slow_url = URI(SPEC_DOMAIN).merge('/blocked-callback-slow').to_s
-      fast_url = URI(SPEC_DOMAIN).merge('/blocked-callback-fast').to_s
-      stub_request(:get, root_url).to_return(
-        body: %(<a href="#{slow_url}">slow</a><a href="#{fast_url}">fast</a>),
-        headers: {'Content-Type' => 'text/html'}
-      )
-      slow_started = Queue.new
-      release_slow = Queue.new
-      stub_request(:get, slow_url).to_return do
-        slow_started << true
-        release_slow.pop
-        {body: 'slow page', headers: {'Content-Type' => 'text/html'}}
+        fetch.call(url, *arguments)
       end
-      stub_request(:get, fast_url).to_return(body: 'fast page', headers: {'Content-Type' => 'text/html'})
-
-      error = RuntimeError.new('page callback failed')
-      crawl = nil
+      after_crawl_called = false
+      core = nil
       crawl_thread = Thread.new do
         begin
           Medusa.crawl(root_url, threads: 2) do |crawler|
-            crawl = crawler
-            crawler.on_every_page { |page| raise error if page.url.to_s == fast_url }
+            core = crawler
+            crawler.after_crawl { after_crawl_called = true }
           end
-        rescue StandardError => crawl_error
+        rescue Exception => crawl_error
           crawl_error
         end
       end
 
-      result = nil
       begin
-        Timeout.timeout(5) { slow_started.pop }
-        result = Timeout.timeout(5) { crawl_thread.value }
+        expect(Timeout.timeout(5) { gate.arrivals.pop }).to eq('/blocked-slow')
+        expect(Timeout.timeout(5) { crawl_thread.value }).to equal(error)
+        expect(after_crawl_called).to be(false)
+        expect_worker_tasks_finished(core)
       ensure
-        release_slow << true
-        crawl_thread.join
+        close_local_http(server, gate, slow_started)
+        finish_crawl_thread(crawl_thread)
       end
-
-      expect(result).to equal(error)
-      expect(crawl.instance_variable_get(:@tentacles).select(&:alive?)).to be_empty
     end
 
-    it 're-raises storage failures, skips after_crawl, and joins worker threads' do
-      FakePage.new('storage-failure')
-      error = RuntimeError.new('page storage failed')
-      allow_any_instance_of(PageStore).to receive(:[]=).and_raise(error)
+    it 're-raises callback failures and finishes owned tasks while a peer request is blocked' do
+      server, gate, slow_started, root_url, _slow_url, fast_url = blocked_pair
+      allow_local_http
+      error = RuntimeError.new('page callback failed')
       after_crawl_called = false
-      threads_before = Thread.list
-
-      expect do
-        Medusa.crawl(URI(SPEC_DOMAIN).merge('/storage-failure').to_s, threads: 2) do |crawler|
-          crawler.after_crawl { after_crawl_called = true }
+      core = nil
+      crawl_thread = Thread.new do
+        begin
+          Medusa.crawl(root_url, threads: 2) do |crawler|
+            core = crawler
+            crawler.on_every_page { |page| raise error if page.url.to_s == fast_url }
+            crawler.after_crawl { after_crawl_called = true }
+          end
+        rescue Exception => crawl_error
+          crawl_error
         end
-      end.to raise_error(error)
+      end
 
-      expect(after_crawl_called).to be(false)
-      expect((Thread.list - threads_before).select(&:alive?)).to be_empty
+      begin
+        expect(Timeout.timeout(5) { gate.arrivals.pop }).to eq('/blocked-slow')
+        expect(Timeout.timeout(5) { crawl_thread.value }).to equal(error)
+        expect(after_crawl_called).to be(false)
+        expect_worker_tasks_finished(core)
+      ensure
+        close_local_http(server, gate, slow_started)
+        finish_crawl_thread(crawl_thread)
+      end
+    end
+
+    it 're-raises storage failures and finishes owned tasks while a peer request is blocked' do
+      server, gate, slow_started, root_url, _slow_url, fast_url = blocked_pair
+      allow_local_http
+      error = RuntimeError.new('page storage failed')
+      allow_any_instance_of(PageStore).to receive(:[]=).and_wrap_original do |write, url, page|
+        raise error if url.to_s == fast_url
+
+        write.call(url, page)
+      end
+      after_crawl_called = false
+      core = nil
+      crawl_thread = Thread.new do
+        begin
+          Medusa.crawl(root_url, threads: 2) do |crawler|
+            core = crawler
+            crawler.after_crawl { after_crawl_called = true }
+          end
+        rescue Exception => crawl_error
+          crawl_error
+        end
+      end
+
+      begin
+        expect(Timeout.timeout(5) { gate.arrivals.pop }).to eq('/blocked-slow')
+        expect(Timeout.timeout(5) { crawl_thread.value }).to equal(error)
+        expect(after_crawl_called).to be(false)
+        expect_worker_tasks_finished(core)
+      ensure
+        close_local_http(server, gate, slow_started)
+        finish_crawl_thread(crawl_thread)
+      end
     end
 
     RSpec.shared_examples_for "crawl" do
@@ -597,6 +927,19 @@ module Medusa
       it "should use 1 thread if a delay is requested" do
         allow_any_instance_of(Tentacle).to receive(:sleep)
         expect(Medusa.crawl(SPEC_DOMAIN, :delay => 1, :threads => 2).opts[:threads]).to be(1)
+      end
+
+      it 'rejects non-positive or non-integer worker limits before clearing storage' do
+        [0, -1, '2'].each do |workers|
+          storage = Storage.Moneta(:Memory)
+          expect(storage).not_to receive(:clear)
+
+          expect { Medusa.crawl(SPEC_DOMAIN, threads: workers, storage:) }
+            .to raise_error(ArgumentError, /threads must be a positive Integer/)
+        end
+
+        allow_any_instance_of(Tentacle).to receive(:sleep)
+        expect(Medusa.crawl(SPEC_DOMAIN, delay: 1, threads: 0).opts[:threads]).to eq(1)
       end
     end
 
