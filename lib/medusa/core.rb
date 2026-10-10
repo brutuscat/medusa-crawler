@@ -1,4 +1,6 @@
 require 'thread'
+require 'async'
+require 'async/queue'
 require 'robotex'
 require 'medusa/tentacle'
 require 'medusa/page'
@@ -36,8 +38,28 @@ module Medusa
     WorkerFailure = Data.define(:error)
     private_constant :WorkerFailure
 
+    # Async::Queue is scheduler-aware but uses the modern enqueue/dequeue
+    # names. Tentacle's public constructor still accepts Ruby Queue objects,
+    # so this adapter gives Core the same queue protocol with fiber-safe waits.
+    class SchedulerQueue
+      def initialize
+        @queue = Async::Queue.new
+      end
+
+      def <<(item) = (@queue << item)
+      def enq(item) = @queue.enqueue(item)
+      def deq = @queue.dequeue
+      def empty? = @queue.empty?
+
+      def clear
+        @queue.dequeue(timeout: 0) until @queue.empty?
+        self
+      end
+    end
+    private_constant :SchedulerQueue
+
     DEFAULT_OPTS = {
-      # run 4 Tentacle threads to fetch pages
+      # run 4 fetch workers
       :threads => 4,
       # don't throw away the page response body after scanning it for links
       :discard_page_bodies => false,
@@ -162,6 +184,22 @@ module Medusa
     #
     def run
 
+      ensure_supported_scheduler!
+      Sync do |parent|
+        scope = parent.async(finished: false) { |scope| run_with_workers(scope) }
+        begin
+          scope.wait
+        rescue Async::Cancel
+          cancel_scope(scope, parent)
+          raise
+        end
+      end
+    end
+
+    private
+
+    def run_with_workers(scope)
+
       process_options
 
       reserved_urls = {}
@@ -171,24 +209,28 @@ module Medusa
       return if @urls.empty?
 
       @tentacles = []
-      link_queue = Queue.new
-      page_queue = Queue.new
+      link_queue = SchedulerQueue.new
+      page_queue = SchedulerQueue.new
       workers_stopped = false
 
       begin
         @opts[:threads].times do
           worker_opts = @opts.merge(fetch_task_complete: -> { page_queue << FetchComplete })
-          @tentacles << Thread.new do
+          @tentacles << scope.async(finished: false) do
             begin
               Tentacle.new(link_queue, page_queue, worker_opts).run
               nil
-            rescue StandardError => error
+            rescue Async::Cancel
+              raise
+            rescue Exception => error
               page_queue << WorkerFailure.new(error)
               error
             end
           end
         end
 
+        # Count each seed before making it visible to a worker.
+        outstanding_fetches = @urls.size
         @urls.each do |url|
           link_queue.enq(FetchTask.new(url:, referer: nil, depth: 0))
         end
@@ -196,7 +238,6 @@ module Medusa
         # Each admitted fetch remains outstanding until its pages have been
         # handled and the worker reports that the fetch is complete. This also
         # keeps redirect response pages attached to their parent task.
-        outstanding_fetches = @urls.size
         while outstanding_fetches > 0
           result = page_queue.deq
 
@@ -212,19 +253,21 @@ module Medusa
             page.discard_doc! if @opts[:discard_page_bodies]
 
             links = links_to_follow(page, reserved_urls)
+            # Count child work before dispatch so the coordinator cannot
+            # observe a completion and exit before a worker sees the child.
+            outstanding_fetches += links.size
             links.each do |link|
               link_queue << FetchTask.new(url: link, referer: page.url.dup, depth: page.depth + 1)
             end
             @pages.touch_keys links
-            outstanding_fetches += links.size
 
             @pages[page.url] = page
           end
         end
 
-        stop_tentacles(link_queue)
+        worker_results = stop_tentacles(link_queue)
         workers_stopped = true
-        worker_error = @tentacles.map(&:value).find { |result| result.is_a?(Exception) }
+        worker_error = worker_results.find { |result| result.is_a?(Exception) }
         raise worker_error if worker_error
 
         do_after_crawl_blocks
@@ -239,11 +282,35 @@ module Medusa
       end
     end
 
-    private
+    def ensure_supported_scheduler!
+      scheduler = Fiber.scheduler
+      return if scheduler.nil? && !Async::Task.current?
+      return if scheduler.is_a?(Async::Scheduler)
+
+      raise ArgumentError, 'Medusa crawls require Async when a Fiber scheduler is already active'
+    end
+
+    def cancel_scope(scope, parent)
+      loop do
+        begin
+          parent.defer_cancel do
+            scope.cancel
+            Fiber.scheduler.yield until scope.finished?
+          end
+          return
+        rescue Async::Cancel
+          # Continue cleanup if the caller receives another cancellation.
+        end
+      end
+    end
 
     def process_options
       @opts = DEFAULT_OPTS.merge @opts
       @opts[:threads] = 1 if @opts[:delay] > 0
+      unless @opts[:threads].is_a?(Integer) && @opts[:threads].positive?
+        raise ArgumentError, 'threads must be a positive Integer'
+      end
+
       storage = Storage::Base.new(@opts[:storage] || Storage.Moneta(:Memory))
       storage.clear if @opts[:clear_on_startup]
       @pages = PageStore.new(storage)
@@ -325,7 +392,7 @@ module Medusa
 
       link_queue.clear
       @tentacles.size.times { link_queue << :END }
-      @tentacles.each(&:join)
+      wait_tentacles
     end
 
     # On failure, cancel active fetches so a blocked request cannot prevent the
@@ -334,8 +401,19 @@ module Medusa
       return if @tentacles.empty?
 
       link_queue.clear
-      @tentacles.each { |thread| thread.kill if thread.alive? }
-      @tentacles.each(&:join)
+      @tentacles.each(&:cancel)
+      wait_tentacles
+    end
+
+    def wait_tentacles
+      @tentacles.map do |task|
+        task.wait
+      rescue Async::Cancel
+        raise
+      rescue Exception => error
+        # Keep waiting for every worker; callers decide which error to raise.
+        error
+      end
     end
 
     #

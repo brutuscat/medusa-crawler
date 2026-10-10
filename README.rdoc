@@ -6,7 +6,7 @@ it visits. It is versatile, allowing you to write your own specialized tasks qui
 === Features
 
 * Choose the links to follow on each page with +focus_crawl+
-* Multi-threaded design for high performance
+* Fixed-size Async worker pool for concurrent HTTP fetching
 * Tracks +301+ HTTP redirects
 * Allows exclusion of URLs based on regular expressions
 * Records response time for each page
@@ -57,6 +57,22 @@ For more complete examples, see the {examples documentation}[https://github.com/
 moneta::  for the key/value storage adapters
 nokogiri::  for parsing the HTML of webpages
 robotex::  for support of the robots.txt directives
+async::  for scheduler-compatible concurrent HTTP fetching
+
+=== Execution model
+
+Medusa uses a fixed pool of fiber workers to fetch pages. The +threads+ option controls the number
+of workers and defaults to +4+; a positive +delay+ forces one worker so requests remain spaced.
+Each worker owns its HTTP client, while page callbacks and storage updates run serially on the
+thread that called +Medusa.crawl+.
+Blocking callbacks or storage adapters and CPU-heavy parsing can pause the other workers on that
+scheduler thread.
+
+A normal synchronous call creates and closes an Async reactor for the crawl. When called from an
+existing Async task, Medusa runs in a child task and leaves the caller's reactor open. Medusa keeps
+OpenURI for HTTP requests; Async makes its socket waits cooperative. An already-active fiber
+scheduler must be an Async scheduler, and Medusa rejects another scheduler before it clears storage
+or starts network requests.
 
 === Development
 
