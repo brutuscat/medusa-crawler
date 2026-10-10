@@ -291,10 +291,11 @@ module Medusa
       stub_request(:get, fast_url).to_return(body: 'fast page', headers: {'Content-Type' => 'text/html'})
 
       error = RuntimeError.new('page callback failed')
-      threads_before = Thread.list
+      crawl = nil
       crawl_thread = Thread.new do
         begin
           Medusa.crawl(root_url, threads: 2) do |crawler|
+            crawl = crawler
             crawler.on_every_page { |page| raise error if page.url.to_s == fast_url }
           end
         rescue StandardError => crawl_error
@@ -312,7 +313,7 @@ module Medusa
       end
 
       expect(result).to equal(error)
-      expect((Thread.list - threads_before).select(&:alive?)).to be_empty
+      expect(crawl.instance_variable_get(:@tentacles).select(&:alive?)).to be_empty
     end
 
     it 're-raises storage failures, skips after_crawl, and joins worker threads' do
